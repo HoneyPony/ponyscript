@@ -54,6 +54,17 @@ impl StringPool {
     pub fn unpool_copy(&self, str: PoolS) -> Option<Vec<u8>> {
         self.int_to_str.borrow().get(&str.value).map(|val| val.clone())
     }
+
+    pub fn unpool_to_utf8(&self, str: PoolS) -> String {
+        self.int_to_str
+            .borrow()
+            .get(&str.value)
+            .map(|val| {
+                String::from_utf8(val.clone())
+                    .unwrap_or(String::from("<bad utf8>"))
+            })
+            .unwrap_or(String::from("<not in pool>"))
+    }
 }
 
 #[cfg(test)]
@@ -88,5 +99,14 @@ mod tests {
         let str = pool.unpool_copy(ps).unwrap();
 
         assert_eq!(str, vec![b'a', b'b', b'c']);
+    }
+
+    #[test]
+    fn test_to_utf8_not_in_pool() {
+        let pool = StringPool::new();
+
+        let bad = PoolS { value: 10 };
+
+        assert_eq!(pool.unpool_to_utf8(bad), String::from("<not in pool>"));
     }
 }

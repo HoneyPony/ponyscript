@@ -7,11 +7,11 @@ use crate::string_pool::StringPool;
 
 fn main() {
     let sp = StringPool::new();
-    let mut lex = Lexer::from_str("abc", &sp);
+    let mut lex = Lexer::from_str("abc \"string literal\" lmao", &sp);
 
     loop {
         let tok = lex.next();
-        dbg!(&tok);
+        dbg!(lex.token_to_string(&tok));
         if tok == EOF { break; }
     }
 }

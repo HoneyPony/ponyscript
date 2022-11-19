@@ -1,18 +1,22 @@
-use std::io::{BufReader, Cursor, Read, Seek};
+use std::io::{BufReader, Read};
 
 use crate::string_pool::{PoolS, StringPool};
 
-pub struct Lexer<'a, R: Read + Seek> {
+pub struct Lexer<'a, R: Read> {
     string_pool: &'a StringPool,
-    reader: BufReader<R>
+    reader: BufReader<R>,
+
+    /// The current character that the Lexer has read in from the stream. Should be checked against
+    /// until some part of the logic wants to advance the stream further.
+    current: Option<u8>
 }
 
 #[derive(Debug)]
 #[derive(PartialEq)]
 
 pub enum Token {
-    Empty,
     ID(PoolS),
+    StringLiteral(Vec<u8>),
     BadLex,
     EOF
 }
@@ -38,55 +42,60 @@ fn is_alphanum(byte: Option<u8>) -> bool {
 
     let lower = byte >= b'a' && byte <= b'z';
     let upper = byte >= b'A' && byte <= b'Z';
-    let num = byte >= b'0' && byte <= b'9';
+    let num   = byte >= b'0' && byte <= b'9';
 
     return lower || upper || num;
 }
 
-impl<'a> Lexer<'a, Cursor<&[u8]>> {
+// fn is(byte: u8) -> fn(Option<u8>) -> bool {
+//     |c: Option<u8>| -> bool {
+//         match c {
+//             Some(other) => byte == other,
+//             None => false
+//         }
+//     }
+// }
+
+impl<'a> Lexer<'a, &[u8]> {
     pub fn from_str(string: &'static str, sp: &'a StringPool) -> Self {
-        let cursor = Cursor::new(string.as_bytes());
-        let reader = BufReader::new(cursor);
-        Lexer { reader, string_pool: sp }
+        let reader = BufReader::new(string.as_bytes());
+        Lexer { reader, string_pool: sp, current: Some(b' ') }
     }
 }
 
-impl<'a, R: Read + Seek> Lexer<'a, R> {
+impl<'a, R: Read> Lexer<'a, R> {
     fn new(reader: BufReader<R>, sp: &'a StringPool) -> Self {
-        Lexer { reader, string_pool: sp }
+        Lexer { reader, string_pool: sp, current: Some(b' ') }
     }
 
     fn advance(&mut self) -> Option<u8> {
         let mut byte = [0];
 
-        self.reader.read(&mut byte).ok().map(|read| {
+        let result = self.current;
+
+        self.current = self.reader.read(&mut byte).ok().map(|read| {
             if read == 1 { Some(byte[0]) } else { None }
-        }).flatten()
-    }
-
-    fn rewind(&mut self) {
-        // TODO: Maybe we should implement this behavior ourselves??
-        self.reader.seek_relative(-1);
-    }
-
-    fn peek(&mut self) -> Option<u8> {
-        let result = self.advance();
-
-        if result.is_some() {
-            self.rewind();
-        }
+        }).flatten();
 
         result
     }
 
-    fn matchf<F: Fn(Option<u8>) -> bool>(&mut self, f: F) -> Option<u8> {
-        let next = self.advance();
-        let matches = f(next);
+    fn peek(&self) -> Option<u8> {
+        self.current
+    }
+
+    /// Tries to match the next byte in the input stream to the given function.
+    /// If the byte matches, returns Some, otherwise returns None. Or, if the
+    /// stream ends, may also return None.
+    fn matchf<F>(&mut self, f: F) -> Option<u8>
+    where
+        F: Fn(Option<u8>) -> bool
+    {
+        let matches = f(self.current);
         if matches {
-            next
+            self.advance()
         }
         else {
-            self.rewind();
             None
         }
     }
@@ -115,6 +124,30 @@ impl<'a, R: Read + Seek> Lexer<'a, R> {
         ID(self.string_pool.pool_str(string))
     }
 
+    pub fn make_lit(&self, string: Vec<u8>) -> Token {
+        StringLiteral(string)
+    }
+
+    pub fn make_lit_str(&self, string: &'static str) -> Token {
+        StringLiteral(string.as_bytes().to_vec())
+    }
+
+    fn match_one(&mut self, character: u8) -> bool {
+        if self.current.map(|c| c == character).unwrap_or(false) {
+            self.advance();
+            return true;
+        }
+        false
+    }
+
+    fn match_not(&mut self, character: u8) -> Option<u8> {
+        // Assume that EOF also does not match. We basically never want to match EOF.
+        if self.current.map(|c| c != character).unwrap_or(false) {
+            return self.advance()
+        }
+        None
+    }
+
     pub fn next(&mut self) -> Token {
         while self.matchf(is_whitespace).is_some() {}
 
@@ -122,30 +155,45 @@ impl<'a, R: Read + Seek> Lexer<'a, R> {
             return EOF;
         }
 
-        // Idea...
-        // Make a new function, called like, advance_predicate, or something, that returns an
-        // Option<u8>, and that only advances the input stream if the character matches the predicate.
-        // Otherwise, leaves the input stream untouched and returns None.
-        //
-        // This should allow us to completely avoid using unwrap(), as well as do less redundant work
-        // otherwise.
         if let Some(mut id) = self.match_to_vec(is_alpha) {
-            // while let Some(c) = self.matchf(is_alphanum) {
-            //     id.push(c);
-            // }
             self.match_onto_vec(&mut id, is_alphanum);
 
             return self.make_id(&id);
         }
 
-        Empty
+        if self.match_one(b'"') {
+            let mut result = Vec::<u8>::new();
+            while let Some(next) = self.match_not(b'"') {
+                result.push(next);
+                if next == b'\\' {
+                    // If there is a character after a backslash, include it unconditionally...
+                    self.advance().map(|c| result.push(c));
+                }
+            }
+
+            if !self.match_one(b'"') {
+                return BadLex;
+            }
+
+            return StringLiteral(result);
+        }
+
+        BadLex
     }
 
-
+    pub fn token_to_string(&self, tok: &Token) -> String {
+        match tok {
+            ID(ps) => format!("ID [{}]", self.string_pool.unpool_to_utf8(*ps)),
+            StringLiteral(arr) => format!("StringLiteral [{}]", String::from_utf8(arr.clone()).unwrap()),
+            EOF => format!("EOF"),
+            BadLex => format!("BadLex")
+        }
+    }
 }
 
 #[cfg(test)]
 mod tests {
+    use crate::lexer::Token::BadLex;
     use crate::string_pool::StringPool;
     use super::{Lexer, Token};
 
@@ -158,5 +206,31 @@ mod tests {
         assert_eq!(lexer.next(), lexer.make_id_str("AlphaBET"));
         assert_eq!(lexer.next(), lexer.make_id_str("canhave12345"));
         assert_eq!(lexer.next(), lexer.make_id_str("mix12and09"));
+    }
+
+    #[test]
+    fn lex_ascii_string_literal() {
+        let sp = StringPool::new();
+        let mut lexer = Lexer::from_str("    \"string literal\"   \"12__34__5\"    \"!@#$cvbn*()_=|\"   ", &sp);
+
+        assert_eq!(lexer.next(), lexer.make_lit_str("string literal"));
+        assert_eq!(lexer.next(), lexer.make_lit_str("12__34__5"));
+        assert_eq!(lexer.next(), lexer.make_lit_str("!@#$cvbn*()_=|"));
+    }
+
+    #[test]
+    fn lex_lit_backspace() {
+        let sp = StringPool::new();
+        let mut lexer = Lexer::from_str("   \"\\n\\b\\c\\d\\\"asdf\\\"asdf\"", &sp);
+
+        assert_eq!(lexer.next(), lexer.make_lit_str("\\n\\b\\c\\d\\\"asdf\\\"asdf"));
+    }
+
+    #[test]
+    fn lex_lit_no_end() {
+        let sp = StringPool::new();
+        let mut lexer = Lexer::from_str("    \"oops, no quote", &sp);
+
+        assert_eq!(lexer.next(), BadLex);
     }
 }
