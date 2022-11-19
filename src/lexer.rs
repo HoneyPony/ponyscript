@@ -67,21 +67,35 @@ impl<R: Read + Seek> Lexer<R> {
         }).flatten()
     }
 
+    fn rewind(&mut self) {
+        // TODO: Maybe we should implement this behavior ourselves??
+        self.reader.seek_relative(-1);
+    }
+
     fn peek(&mut self) -> Option<u8> {
         let result = self.advance();
 
         if result.is_some() {
-            // TODO: Maybe we should implement this behavior ourselves??
-            self.reader.seek_relative(-1);
+            self.rewind();
         }
 
         result
     }
 
-    pub fn next(&mut self) -> Token {
-        while is_whitespace(self.peek()) {
-            self.advance();
+    fn matchf<F: Fn(Option<u8>) -> bool>(&mut self, f: F) -> Option<u8> {
+        let next = self.advance();
+        let matches = f(next);
+        if matches {
+            next
         }
+        else {
+            self.rewind();
+            None
+        }
+    }
+
+    pub fn next(&mut self) -> Token {
+        while self.matchf(is_whitespace).is_some() {}
 
         if self.peek().is_none() {
             return EOF;
@@ -94,10 +108,10 @@ impl<R: Read + Seek> Lexer<R> {
         //
         // This should allow us to completely avoid using unwrap(), as well as do less redundant work
         // otherwise.
-        if is_alpha(self.peek()) {
-            let mut id = vec![self.advance().unwrap()];
-            while is_alphanum(self.peek()) {
-                id.push(self.advance().unwrap());
+        if let Some(first) = self.matchf(is_alpha) {
+            let mut id = vec![first];
+            while let Some(c) = self.matchf(is_alphanum) {
+                id.push(c);
             }
 
             let str = String::from_utf8(id);
