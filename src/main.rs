@@ -1,4 +1,5 @@
 mod lexer;
+mod string_pool;
 
 use lexer::Lexer;
 use crate::lexer::Token::EOF;
