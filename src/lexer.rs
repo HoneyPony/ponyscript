@@ -1,6 +1,9 @@
 use std::io::{BufReader, Cursor, Read, Seek};
 
-pub struct Lexer<R: Read + Seek> {
+use crate::string_pool::{PoolS, StringPool};
+
+pub struct Lexer<'a, R: Read + Seek> {
+    string_pool: &'a StringPool,
     reader: BufReader<R>
 }
 
@@ -9,15 +12,9 @@ pub struct Lexer<R: Read + Seek> {
 
 pub enum Token {
     Empty,
-    ID(String),
+    ID(PoolS),
     BadLex,
     EOF
-}
-
-impl Token {
-    fn id_from(s: &str) -> Self {
-        return ID(String::from(s));
-    }
 }
 
 use Token::*;
@@ -46,17 +43,17 @@ fn is_alphanum(byte: Option<u8>) -> bool {
     return lower || upper || num;
 }
 
-impl Lexer<Cursor<&[u8]>> {
-    pub fn from_str(string: &'static str) -> Self {
+impl<'a> Lexer<'a, Cursor<&[u8]>> {
+    pub fn from_str(string: &'static str, sp: &'a StringPool) -> Self {
         let cursor = Cursor::new(string.as_bytes());
         let reader = BufReader::new(cursor);
-        Lexer { reader }
+        Lexer { reader, string_pool: sp }
     }
 }
 
-impl<R: Read + Seek> Lexer<R> {
-    fn new(reader: BufReader<R>) -> Self {
-        Lexer { reader }
+impl<'a, R: Read + Seek> Lexer<'a, R> {
+    fn new(reader: BufReader<R>, sp: &'a StringPool) -> Self {
+        Lexer { reader, string_pool: sp }
     }
 
     fn advance(&mut self) -> Option<u8> {
@@ -94,6 +91,30 @@ impl<R: Read + Seek> Lexer<R> {
         }
     }
 
+    fn match_to_vec<F>(&mut self, f: F) -> Option<Vec<u8>>
+    where
+        F: Fn(Option<u8>) -> bool
+    {
+        self.matchf(f).map(|byte| vec![byte])
+    }
+
+    fn match_onto_vec<F>(&mut self, vector: &mut Vec<u8>, f: F)
+    where
+        F: Fn(Option<u8>) -> bool
+    {
+        while let Some(byte) = self.matchf(&f) {
+            vector.push(byte);
+        }
+    }
+
+    pub fn make_id(&self, string: &Vec<u8>) -> Token {
+        ID(self.string_pool.pool(string))
+    }
+
+    pub fn make_id_str(&self, string: &'static str) -> Token {
+        ID(self.string_pool.pool_str(string))
+    }
+
     pub fn next(&mut self) -> Token {
         while self.matchf(is_whitespace).is_some() {}
 
@@ -108,34 +129,34 @@ impl<R: Read + Seek> Lexer<R> {
         //
         // This should allow us to completely avoid using unwrap(), as well as do less redundant work
         // otherwise.
-        if let Some(first) = self.matchf(is_alpha) {
-            let mut id = vec![first];
-            while let Some(c) = self.matchf(is_alphanum) {
-                id.push(c);
-            }
+        if let Some(mut id) = self.match_to_vec(is_alpha) {
+            // while let Some(c) = self.matchf(is_alphanum) {
+            //     id.push(c);
+            // }
+            self.match_onto_vec(&mut id, is_alphanum);
 
-            let str = String::from_utf8(id);
-            return match str {
-                Ok(s) => ID(s),
-                Err(_) => BadLex
-            }
+            return self.make_id(&id);
         }
 
         Empty
     }
+
+
 }
 
 #[cfg(test)]
 mod tests {
+    use crate::string_pool::StringPool;
     use super::{Lexer, Token};
 
     #[test]
     fn lex_id() {
-        let mut lexer = Lexer::from_str("  abc    hello    AlphaBET canhave12345 mix12and09");
-        assert_eq!(lexer.next(), Token::id_from("abc"));
-        assert_eq!(lexer.next(), Token::id_from("hello"));
-        assert_eq!(lexer.next(), Token::id_from("AlphaBET"));
-        assert_eq!(lexer.next(), Token::id_from("canhave12345"));
-        assert_eq!(lexer.next(), Token::id_from("mix12and09"));
+        let sp = StringPool::new();
+        let mut lexer = Lexer::from_str("  abc    hello    AlphaBET canhave12345 mix12and09", &sp);
+        assert_eq!(lexer.next(), lexer.make_id_str("abc"));
+        assert_eq!(lexer.next(), lexer.make_id_str("hello"));
+        assert_eq!(lexer.next(), lexer.make_id_str("AlphaBET"));
+        assert_eq!(lexer.next(), lexer.make_id_str("canhave12345"));
+        assert_eq!(lexer.next(), lexer.make_id_str("mix12and09"));
     }
 }
