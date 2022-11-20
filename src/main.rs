@@ -11,7 +11,7 @@ fn main() {
 
     loop {
         let tok = lex.next();
-        dbg!(lex.token_to_string(&tok));
-        if tok == EOF { break; }
+        dbg!(&tok);
+        if tok.is_eof() { break }
     }
 }

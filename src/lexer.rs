@@ -2,6 +2,13 @@ use std::io::{BufReader, Read};
 
 use crate::string_pool::{PoolS, StringPool};
 
+mod token;
+
+pub use token::Token;
+pub use token::WrappedToken;
+
+use token::Token::*;
+
 pub struct Lexer<'a, R: Read> {
     string_pool: &'a StringPool,
     reader: BufReader<R>,
@@ -11,17 +18,9 @@ pub struct Lexer<'a, R: Read> {
     current: Option<u8>
 }
 
-#[derive(Debug)]
-#[derive(PartialEq)]
 
-pub enum Token {
-    ID(PoolS),
-    StringLiteral(Vec<u8>),
-    BadLex,
-    EOF
-}
 
-use Token::*;
+
 
 fn is_whitespace(byte: Option<u8>) -> bool {
     let byte = byte.unwrap_or(b'0');
@@ -116,22 +115,6 @@ impl<'a, R: Read> Lexer<'a, R> {
         }
     }
 
-    pub fn make_id(&self, string: &Vec<u8>) -> Token {
-        ID(self.string_pool.pool(string))
-    }
-
-    pub fn make_id_str(&self, string: &'static str) -> Token {
-        ID(self.string_pool.pool_str(string))
-    }
-
-    pub fn make_lit(&self, string: Vec<u8>) -> Token {
-        StringLiteral(string)
-    }
-
-    pub fn make_lit_str(&self, string: &'static str) -> Token {
-        StringLiteral(string.as_bytes().to_vec())
-    }
-
     fn match_one(&mut self, character: u8) -> bool {
         if self.current.map(|c| c == character).unwrap_or(false) {
             self.advance();
@@ -148,17 +131,17 @@ impl<'a, R: Read> Lexer<'a, R> {
         None
     }
 
-    pub fn next(&mut self) -> Token {
+    pub fn next(&mut self) -> WrappedToken<R> {
         while self.matchf(is_whitespace).is_some() {}
 
         if self.peek().is_none() {
-            return EOF;
+            return token::eof(self);
         }
 
         if let Some(mut id) = self.match_to_vec(is_alpha) {
             self.match_onto_vec(&mut id, is_alphanum);
 
-            return self.make_id(&id);
+            return token::id(self, &id);
         }
 
         if self.match_one(b'"') {
@@ -172,22 +155,13 @@ impl<'a, R: Read> Lexer<'a, R> {
             }
 
             if !self.match_one(b'"') {
-                return BadLex;
+                return token::bad(self);
             }
 
-            return StringLiteral(result);
+            return token::lit(self, result);
         }
 
-        BadLex
-    }
-
-    pub fn token_to_string(&self, tok: &Token) -> String {
-        match tok {
-            ID(ps) => format!("ID [{}]", self.string_pool.unpool_to_utf8(*ps)),
-            StringLiteral(arr) => format!("StringLiteral [{}]", String::from_utf8(arr.clone()).unwrap()),
-            EOF => format!("EOF"),
-            BadLex => format!("BadLex")
-        }
+        token::bad(self)
     }
 }
 
@@ -201,11 +175,12 @@ mod tests {
     fn lex_id() {
         let sp = StringPool::new();
         let mut lexer = Lexer::from_str("  abc    hello    AlphaBET canhave12345 mix12and09", &sp);
-        assert_eq!(lexer.next(), lexer.make_id_str("abc"));
-        assert_eq!(lexer.next(), lexer.make_id_str("hello"));
-        assert_eq!(lexer.next(), lexer.make_id_str("AlphaBET"));
-        assert_eq!(lexer.next(), lexer.make_id_str("canhave12345"));
-        assert_eq!(lexer.next(), lexer.make_id_str("mix12and09"));
+
+        assert!(lexer.next().is_id_str("abc"));
+        assert!(lexer.next().is_id_str("hello"));
+        assert!(lexer.next().is_id_str("AlphaBET"));
+        assert!(lexer.next().is_id_str("canhave12345"));
+        assert!(lexer.next().is_id_str("mix12and09"));
     }
 
     #[test]
@@ -213,9 +188,9 @@ mod tests {
         let sp = StringPool::new();
         let mut lexer = Lexer::from_str("    \"string literal\"   \"12__34__5\"    \"!@#$cvbn*()_=|\"   ", &sp);
 
-        assert_eq!(lexer.next(), lexer.make_lit_str("string literal"));
-        assert_eq!(lexer.next(), lexer.make_lit_str("12__34__5"));
-        assert_eq!(lexer.next(), lexer.make_lit_str("!@#$cvbn*()_=|"));
+        assert!(lexer.next().is_lit_str("string literal"));
+        assert!(lexer.next().is_lit_str("12__34__5"));
+        assert!(lexer.next().is_lit_str("!@#$cvbn*()_=|"));
     }
 
     #[test]
@@ -223,7 +198,7 @@ mod tests {
         let sp = StringPool::new();
         let mut lexer = Lexer::from_str("   \"\\n\\b\\c\\d\\\"asdf\\\"asdf\"", &sp);
 
-        assert_eq!(lexer.next(), lexer.make_lit_str("\\n\\b\\c\\d\\\"asdf\\\"asdf"));
+        assert!(lexer.next().is_lit_str("\\n\\b\\c\\d\\\"asdf\\\"asdf"));
     }
 
     #[test]
@@ -231,6 +206,6 @@ mod tests {
         let sp = StringPool::new();
         let mut lexer = Lexer::from_str("    \"oops, no quote", &sp);
 
-        assert_eq!(lexer.next(), BadLex);
+        assert!(lexer.next().is_bad());
     }
 }
