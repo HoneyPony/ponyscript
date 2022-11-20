@@ -52,7 +52,7 @@ impl StringPool {
     }
 
     pub fn pool_str(&self, str: &'static str) -> PoolS {
-        self.pool(&str.as_bytes().to_vec())
+        self.pool_ref(&str.as_bytes().to_vec())
     }
 
     /// Gets a pooled string, IF the given string already exists in the pool.
@@ -61,7 +61,7 @@ impl StringPool {
     ///
     /// Can be used to compare pooled strings without filling up the pool with unused values.
     pub fn pool_tmp_str(&self, str: &'static str) -> PoolS {
-        self.pool(&str.as_bytes().to_vec())
+        self.pool_ref(&str.as_bytes().to_vec())
     }
 
     pub fn pool_tmp(&self, str: &Vec<u8>) -> PoolS {
@@ -74,7 +74,25 @@ impl StringPool {
         }
     }
 
-    pub fn pool(&self, str: &Vec<u8>) -> PoolS {
+    pub fn pool(&self, str: Vec<u8>) -> PoolS {
+        let map = self.str_to_int.borrow();
+        let val = map.get(&str).map(|v| *v);
+        drop(map);
+
+        let val = val.unwrap_or_else(|| {
+            let new_key = self.consume_key();
+
+            // This method saves one copy...
+            self.str_to_int.borrow_mut().insert(str.clone(), new_key);
+            self.int_to_str.borrow_mut().insert(new_key, str);
+
+            new_key
+        });
+
+        PoolS { value: val, pool: self }
+    }
+
+    pub fn pool_ref(&self, str: &Vec<u8>) -> PoolS {
         let map = self.str_to_int.borrow();
         let val = map.get(str).map(|v| *v);
         drop(map);

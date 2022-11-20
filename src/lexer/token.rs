@@ -75,7 +75,7 @@ pub fn bad<'a, R: Read>(source: &'a Lexer<R>) -> WrappedToken<'a, R> {
     WrappedToken::new(source, BadLex)
 }
 
-pub fn id<'a, R: Read>(source: &'a Lexer<R>, bytes: &Vec<u8>) -> WrappedToken<'a, R> {
+pub fn id<'a, R: Read>(source: &'a Lexer<R>, bytes: Vec<u8>) -> WrappedToken<'a, R> {
     let id = source.string_pool.pool(bytes);
     WrappedToken::new(source, ID(id))
 }
@@ -93,7 +93,7 @@ pub fn lit_str<'a, R: Read>(source: &'a Lexer<R>, string: &'static str) -> Wrapp
     WrappedToken::new(source, StringLiteral(string.as_bytes().to_vec()))
 }
 
-pub fn num<'a, R: Read>(source: &'a Lexer<R>, bytes: &Vec<u8>) -> WrappedToken<'a, R> {
+pub fn num<'a, R: Read>(source: &'a Lexer<R>, bytes: Vec<u8>) -> WrappedToken<'a, R> {
     let num = source.string_pool.pool(bytes);
     WrappedToken::new(source, Num(num))
 }

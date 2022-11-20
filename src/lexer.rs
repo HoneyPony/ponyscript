@@ -71,13 +71,13 @@ impl<'a, R: Read> Lexer<'a, R> {
         if let Some(mut id) = self.match_to_vec(is_alpha) {
             self.match_onto_vec(&mut id, is_alphanum);
 
-            return token::id(self, &id);
+            return token::id(self, id);
         }
 
         if let Some(mut num) = self.match_to_vec(is_num) {
             self.match_onto_vec(&mut num, is_num);
 
-            return token::num(self, &num);
+            return token::num(self, num);
         }
 
         if self.match_one(b'"') {
