@@ -4,11 +4,13 @@ use crate::string_pool::{PoolS, StringPool};
 
 mod token;
 mod matcher;
+mod predicates;
 
 pub use token::Token;
 pub use token::WrappedToken;
 
 use token::Token::*;
+use predicates::*;
 use matcher::Matcher;
 
 pub struct Lexer<'a, R: Read> {
@@ -18,30 +20,6 @@ pub struct Lexer<'a, R: Read> {
     /// The current character that the Lexer has read in from the stream. Should be checked against
     /// until some part of the logic wants to advance the stream further.
     current: Option<u8>
-}
-
-fn is_whitespace(byte: Option<u8>) -> bool {
-    let byte = byte.unwrap_or(b'0');
-    return byte == b' ' || byte == b'\n' || byte == b'\t' || byte == b'\r';
-}
-
-fn is_alpha(byte: Option<u8>) -> bool {
-    let byte = byte.unwrap_or(b'/');
-
-    let lower = byte >= b'a' && byte <= b'z';
-    let upper = byte >= b'A' && byte <= b'Z';
-
-    return lower || upper;
-}
-
-fn is_alphanum(byte: Option<u8>) -> bool {
-    let byte = byte.unwrap_or(b'/');
-
-    let lower = byte >= b'a' && byte <= b'z';
-    let upper = byte >= b'A' && byte <= b'Z';
-    let num   = byte >= b'0' && byte <= b'9';
-
-    return lower || upper || num;
 }
 
 // fn is(byte: u8) -> fn(Option<u8>) -> bool {
@@ -94,6 +72,12 @@ impl<'a, R: Read> Lexer<'a, R> {
             self.match_onto_vec(&mut id, is_alphanum);
 
             return token::id(self, &id);
+        }
+
+        if let Some(mut num) = self.match_to_vec(is_num) {
+            self.match_onto_vec(&mut num, is_num);
+
+            return token::num(self, &num);
         }
 
         if self.match_one(b'"') {
@@ -159,5 +143,16 @@ mod tests {
         let mut lexer = Lexer::from_str("    \"oops, no quote", &sp);
 
         assert!(lexer.next().is_bad());
+    }
+
+    #[test]
+    fn lex_num() {
+        let sp = StringPool::new();
+        let mut lexer = Lexer::from_str("10   30  20   1531897", &sp);
+
+        assert!(lexer.next().is_num_str("10"));
+        assert!(lexer.next().is_num_str("30"));
+        assert!(lexer.next().is_num_str("20"));
+        assert!(lexer.next().is_num_str("1531897"));
     }
 }

@@ -7,6 +7,7 @@ use super::*;
 pub enum Token {
     ID(PoolS),
     StringLiteral(Vec<u8>),
+    Num(PoolS),
     BadLex,
     EOF
 }
@@ -29,6 +30,10 @@ impl<'a, R: Read> WrappedToken<'a, R> {
         self.token == ID(self.source.string_pool.pool_str(string))
     }
 
+    pub fn is_num_str(&self, string: &'static str) -> bool {
+        self.token == Num(self.source.string_pool.pool_str(string))
+    }
+
     pub fn is_lit_str(&self, string: &'static str) -> bool {
         self.token == StringLiteral(string.as_bytes().to_vec())
     }
@@ -39,16 +44,20 @@ impl<'a, R: Read> Debug for WrappedToken<'a, R> {
         match &self.token {
             ID(ps) => {
                 let str = self.source.string_pool.unpool_to_utf8(*ps);
-                f.write_fmt(format_args!("Wrapped(ID[{}])", str))
+                f.write_fmt(format_args!("[ID '{}']", str))
             }
             StringLiteral(arr) => {
-                f.write_fmt(format_args!("Wrapped(StringLiteral[{}])", String::from_utf8(arr.clone()).unwrap()))
+                f.write_fmt(format_args!("[StringLiteral '{}']", String::from_utf8(arr.clone()).unwrap()))
+            }
+            Num(ps) => {
+                let str = self.source.string_pool.unpool_to_utf8(*ps);
+                f.write_fmt(format_args!("[Num '{}']", str))
             }
             EOF => {
-                f.write_fmt(format_args!("Wrapped(EOF)"))
+                f.write_fmt(format_args!("[EOF]"))
             }
             BadLex => {
-                f.write_fmt(format_args!("Wrapped(BadLex)"))
+                f.write_fmt(format_args!("[BadLex]"))
             }
         }
         //
@@ -85,4 +94,9 @@ pub fn lit<'a, R: Read>(source: &'a Lexer<R>, bytes: Vec<u8>) -> WrappedToken<'a
 
 pub fn lit_str<'a, R: Read>(source: &'a Lexer<R>, string: &'static str) -> WrappedToken<'a, R> {
     WrappedToken::new(source, StringLiteral(string.as_bytes().to_vec()))
+}
+
+pub fn num<'a, R: Read>(source: &'a Lexer<R>, bytes: &Vec<u8>) -> WrappedToken<'a, R> {
+    let num = source.string_pool.pool(bytes);
+    WrappedToken::new(source, Num(num))
 }
