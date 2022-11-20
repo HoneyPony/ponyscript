@@ -3,11 +3,13 @@ use std::io::{BufReader, Read};
 use crate::string_pool::{PoolS, StringPool};
 
 mod token;
+mod matcher;
 
 pub use token::Token;
 pub use token::WrappedToken;
 
 use token::Token::*;
+use matcher::Matcher;
 
 pub struct Lexer<'a, R: Read> {
     string_pool: &'a StringPool,
@@ -17,10 +19,6 @@ pub struct Lexer<'a, R: Read> {
     /// until some part of the logic wants to advance the stream further.
     current: Option<u8>
 }
-
-
-
-
 
 fn is_whitespace(byte: Option<u8>) -> bool {
     let byte = byte.unwrap_or(b'0');
@@ -62,9 +60,9 @@ impl<'a> Lexer<'a, &[u8]> {
     }
 }
 
-impl<'a, R: Read> Lexer<'a, R> {
-    fn new(reader: BufReader<R>, sp: &'a StringPool) -> Self {
-        Lexer { reader, string_pool: sp, current: Some(b' ') }
+impl<'a, R: Read> Matcher for Lexer<'a, R> {
+    fn peek(&self) -> Option<u8> {
+        self.current
     }
 
     fn advance(&mut self) -> Option<u8> {
@@ -78,61 +76,15 @@ impl<'a, R: Read> Lexer<'a, R> {
 
         result
     }
+}
 
-    fn peek(&self) -> Option<u8> {
-        self.current
-    }
-
-    /// Tries to match the next byte in the input stream to the given function.
-    /// If the byte matches, returns Some, otherwise returns None. Or, if the
-    /// stream ends, may also return None.
-    fn matchf<F>(&mut self, f: F) -> Option<u8>
-    where
-        F: Fn(Option<u8>) -> bool
-    {
-        let matches = f(self.current);
-        if matches {
-            self.advance()
-        }
-        else {
-            None
-        }
-    }
-
-    fn match_to_vec<F>(&mut self, f: F) -> Option<Vec<u8>>
-    where
-        F: Fn(Option<u8>) -> bool
-    {
-        self.matchf(f).map(|byte| vec![byte])
-    }
-
-    fn match_onto_vec<F>(&mut self, vector: &mut Vec<u8>, f: F)
-    where
-        F: Fn(Option<u8>) -> bool
-    {
-        while let Some(byte) = self.matchf(&f) {
-            vector.push(byte);
-        }
-    }
-
-    fn match_one(&mut self, character: u8) -> bool {
-        if self.current.map(|c| c == character).unwrap_or(false) {
-            self.advance();
-            return true;
-        }
-        false
-    }
-
-    fn match_not(&mut self, character: u8) -> Option<u8> {
-        // Assume that EOF also does not match. We basically never want to match EOF.
-        if self.current.map(|c| c != character).unwrap_or(false) {
-            return self.advance()
-        }
-        None
+impl<'a, R: Read> Lexer<'a, R> {
+    fn new(reader: BufReader<R>, sp: &'a StringPool) -> Self {
+        Lexer { reader, string_pool: sp, current: Some(b' ') }
     }
 
     pub fn next(&mut self) -> WrappedToken<R> {
-        while self.matchf(is_whitespace).is_some() {}
+        while self.match_fn(is_whitespace).is_some() {}
 
         if self.peek().is_none() {
             return token::eof(self);
