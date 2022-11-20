@@ -3,22 +3,21 @@ use super::*;
 
 #[derive(Debug)]
 #[derive(PartialEq)]
-
-pub enum Token {
-    ID(PoolS),
+pub enum Token<'a> {
+    ID(PoolS<'a>),
     StringLiteral(Vec<u8>),
-    Num(PoolS),
+    Num(PoolS<'a>),
     BadLex,
     EOF
 }
 
 pub struct WrappedToken<'a, R: Read> {
-    pub token: Token,
+    pub token: Token<'a>,
     source: &'a Lexer<'a, R>
 }
 
 impl<'a, R: Read> WrappedToken<'a, R> {
-    pub fn new(source: &'a Lexer<R>, token: Token) -> Self {
+    pub fn new(source: &'a Lexer<R>, token: Token<'a>) -> Self {
         return WrappedToken { token, source };
     }
 
@@ -43,15 +42,13 @@ impl<'a, R: Read> Debug for WrappedToken<'a, R> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match &self.token {
             ID(ps) => {
-                let str = self.source.string_pool.unpool_to_utf8(*ps);
-                f.write_fmt(format_args!("[ID '{}']", str))
+                f.write_fmt(format_args!("[ID '{}']", ps.to_utf8()))
             }
             StringLiteral(arr) => {
                 f.write_fmt(format_args!("[StringLiteral '{}']", String::from_utf8(arr.clone()).unwrap()))
             }
             Num(ps) => {
-                let str = self.source.string_pool.unpool_to_utf8(*ps);
-                f.write_fmt(format_args!("[Num '{}']", str))
+                f.write_fmt(format_args!("[Num '{}']", ps.to_utf8()))
             }
             EOF => {
                 f.write_fmt(format_args!("[EOF]"))

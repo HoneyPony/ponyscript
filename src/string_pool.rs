@@ -1,7 +1,9 @@
 use std::borrow::BorrowMut;
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
+use std::ptr;
 
+#[derive(Debug)]
 pub struct StringPool {
     str_to_int: RefCell<HashMap<Vec<u8>, u64>>,
     int_to_str: RefCell<HashMap<u64, Vec<u8>>>,
@@ -10,9 +12,28 @@ pub struct StringPool {
 
 #[derive(Copy, Clone)]
 #[derive(Debug)]
-#[derive(PartialEq)]
-pub struct PoolS {
-    value: u64
+pub struct PoolS<'a> {
+    value: u64,
+    pool: &'a StringPool
+}
+
+impl<'a> PoolS<'a> {
+    pub fn to_utf8(&self) -> String {
+        self.pool.unpool_to_utf8(*self)
+    }
+
+    pub fn to_vec(&self) -> Vec<u8> {
+        // TODO: Figure out if this unwrap is correct?
+        // It should work for any instance of PoolS that is actually returned by a pool.
+        // The only way to get an invalid one is to construct one manually...?
+        self.pool.unpool_copy(*self).unwrap()
+    }
+}
+
+impl<'a> PartialEq for PoolS<'a> {
+    fn eq(&self, other: &Self) -> bool {
+        self.value == other.value && ptr::eq(self.pool, other.pool)
+    }
 }
 
 impl StringPool {
@@ -48,8 +69,8 @@ impl StringPool {
         let val = map.get(str).map(|v| *v);
 
         match val {
-            Some(v) => { PoolS { value: v } },
-            None => { PoolS { value: 0 } }
+            Some(v) => { PoolS { value: v, pool: self } },
+            None => { PoolS { value: 0, pool: self } }
         }
     }
 
@@ -67,7 +88,7 @@ impl StringPool {
             new_key
         });
 
-        PoolS { value: val }
+        PoolS { value: val, pool: self }
     }
 
     pub fn unpool_copy(&self, str: PoolS) -> Option<Vec<u8>> {
@@ -124,7 +145,7 @@ mod tests {
     fn test_to_utf8_not_in_pool() {
         let pool = StringPool::new();
 
-        let bad = PoolS { value: 10 };
+        let bad = PoolS { value: 10, pool: &pool };
 
         assert_eq!(pool.unpool_to_utf8(bad), String::from("<not in pool>"));
     }
