@@ -34,6 +34,25 @@ impl StringPool {
         self.pool(&str.as_bytes().to_vec())
     }
 
+    /// Gets a pooled string, IF the given string already exists in the pool.
+    /// Otherwise, returns a pooled string with a value of '0', which cannot exist legitimately
+    /// in the pool.
+    ///
+    /// Can be used to compare pooled strings without filling up the pool with unused values.
+    pub fn pool_tmp_str(&self, str: &'static str) -> PoolS {
+        self.pool(&str.as_bytes().to_vec())
+    }
+
+    pub fn pool_tmp(&self, str: &Vec<u8>) -> PoolS {
+        let map = self.str_to_int.borrow();
+        let val = map.get(str).map(|v| *v);
+
+        match val {
+            Some(v) => { PoolS { value: v } },
+            None => { PoolS { value: 0 } }
+        }
+    }
+
     pub fn pool(&self, str: &Vec<u8>) -> PoolS {
         let map = self.str_to_int.borrow();
         let val = map.get(str).map(|v| *v);

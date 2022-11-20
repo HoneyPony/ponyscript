@@ -27,11 +27,11 @@ impl<'a, R: Read> WrappedToken<'a, R> {
     pub fn is_bad(&self) -> bool { self.token == BadLex }
 
     pub fn is_id_str(&self, string: &'static str) -> bool {
-        self.token == ID(self.source.string_pool.pool_str(string))
+        self.token == ID(self.source.string_pool.pool_tmp_str(string))
     }
 
     pub fn is_num_str(&self, string: &'static str) -> bool {
-        self.token == Num(self.source.string_pool.pool_str(string))
+        self.token == Num(self.source.string_pool.pool_tmp_str(string))
     }
 
     pub fn is_lit_str(&self, string: &'static str) -> bool {
