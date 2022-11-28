@@ -12,25 +12,35 @@ pub struct StringPool {
 
 #[derive(Copy, Clone)]
 #[derive(Debug)]
-pub struct PoolS<'a> {
+pub struct PoolS {
     value: u64,
-    pool: &'a StringPool
+    pool: *const StringPool
 }
 
-impl<'a> PoolS<'a> {
+impl PoolS {
     pub fn to_utf8(&self) -> String {
-        self.pool.unpool_to_utf8(*self)
+        unsafe {
+            (*self.pool).unpool_to_utf8(*self)
+        }
     }
 
     pub fn to_vec(&self) -> Vec<u8> {
         // TODO: Figure out if this unwrap is correct?
         // It should work for any instance of PoolS that is actually returned by a pool.
         // The only way to get an invalid one is to construct one manually...?
-        self.pool.unpool_copy(*self).unwrap()
+        unsafe {
+            (*self.pool).unpool_copy(*self).unwrap()
+        }
+    }
+
+    pub fn eq_utf8(&self, string: &'static str) -> bool {
+        unsafe {
+            (*self.pool).pool_tmp_str(string).value == self.value
+        }
     }
 }
 
-impl<'a> PartialEq for PoolS<'a> {
+impl<'a> PartialEq for PoolS {
     fn eq(&self, other: &Self) -> bool {
         self.value == other.value && ptr::eq(self.pool, other.pool)
     }

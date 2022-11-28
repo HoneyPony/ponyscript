@@ -1,46 +1,48 @@
 use std::fmt::{Debug, format, Formatter, Write};
 use super::*;
 
-#[derive(Debug)]
 #[derive(PartialEq)]
-pub enum Token<'a> {
-    ID(PoolS<'a>),
+pub enum Token {
+    ID(PoolS),
     StringLiteral(Vec<u8>),
-    Num(PoolS<'a>),
+    Num(PoolS),
+    KeyVar,
+    KeyFun,
     BadLex,
     EOF
 }
 
-pub struct WrappedToken<'a, R: Read> {
-    pub token: Token<'a>,
-    source: &'a Lexer<'a, R>
-}
+impl Token {
+    pub fn is_eof(&self) -> bool { self == &EOF }
 
-impl<'a, R: Read> WrappedToken<'a, R> {
-    pub fn new(source: &'a Lexer<R>, token: Token<'a>) -> Self {
-        return WrappedToken { token, source };
+    pub fn is_bad(&self) -> bool { self == &BadLex }
+
+    pub fn is_something(&self) -> bool {
+        !self.is_eof() && !self.is_bad()
     }
 
-    pub fn is_eof(&self) -> bool { self.token == EOF }
-
-    pub fn is_bad(&self) -> bool { self.token == BadLex }
-
     pub fn is_id_str(&self, string: &'static str) -> bool {
-        self.token == ID(self.source.string_pool.pool_tmp_str(string))
+        if let ID(str) = self {
+            str.eq_utf8(string)
+        }
+        else { false }
     }
 
     pub fn is_num_str(&self, string: &'static str) -> bool {
-        self.token == Num(self.source.string_pool.pool_tmp_str(string))
+        if let Num(str) = self {
+            str.eq_utf8(string)
+        }
+        else { false }
     }
 
     pub fn is_lit_str(&self, string: &'static str) -> bool {
-        self.token == StringLiteral(string.as_bytes().to_vec())
+        self == &StringLiteral(string.as_bytes().to_vec())
     }
 }
 
-impl<'a, R: Read> Debug for WrappedToken<'a, R> {
+impl Debug for Token {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match &self.token {
+        match &self {
             ID(ps) => {
                 f.write_fmt(format_args!("[ID '{}']", ps.to_utf8()))
             }
@@ -56,6 +58,7 @@ impl<'a, R: Read> Debug for WrappedToken<'a, R> {
             BadLex => {
                 f.write_fmt(format_args!("[BadLex]"))
             }
+            _ => { f.write_fmt(format_args!("[Unknown, need to implement]")) }
         }
         //
         // match tok {
@@ -67,33 +70,57 @@ impl<'a, R: Read> Debug for WrappedToken<'a, R> {
     }
 }
 
-pub fn eof<'a, R: Read>(source: &'a Lexer<R>) -> WrappedToken<'a, R> {
-    WrappedToken::new(source, EOF)
+pub fn eof() -> Token {
+    EOF
 }
 
-pub fn bad<'a, R: Read>(source: &'a Lexer<R>) -> WrappedToken<'a, R> {
-    WrappedToken::new(source, BadLex)
+pub fn bad() -> Token{
+    BadLex
 }
 
-pub fn id<'a, R: Read>(source: &'a Lexer<R>, bytes: Vec<u8>) -> WrappedToken<'a, R> {
-    let id = source.string_pool.pool(bytes);
-    WrappedToken::new(source, ID(id))
+pub fn id(pool: &StringPool, bytes: Vec<u8>) -> Token {
+    let id = pool.pool(bytes);
+    ID(id)
 }
 
-pub fn id_str<'a, R: Read>(source: &'a Lexer<R>, string: &'static str) -> WrappedToken<'a, R> {
-    let id = source.string_pool.pool_str(string);
-    WrappedToken::new(source, ID(id))
+pub fn id_str(pool: &StringPool, string: &'static str) -> Token {
+    let id = pool.pool_str(string);
+    ID(id)
 }
 
-pub fn lit<'a, R: Read>(source: &'a Lexer<R>, bytes: Vec<u8>) -> WrappedToken<'a, R> {
-    WrappedToken::new(source, StringLiteral(bytes))
+pub fn id_or_key(pool: &StringPool, bytes: Vec<u8>) -> Token {
+    if bytes.is_empty() {
+        return id(pool, bytes);
+    }
+
+    match bytes[0] {
+        b'f' => {
+            if &bytes[1..] == b"un" {
+                return KeyFun
+            }
+            id(pool, bytes)
+        }
+        b'v' => {
+            if &bytes[1..] == b"ar" {
+                return KeyVar
+            }
+            id(pool, bytes)
+        }
+        _ => {
+            id(pool, bytes)
+        }
+    }
 }
 
-pub fn lit_str<'a, R: Read>(source: &'a Lexer<R>, string: &'static str) -> WrappedToken<'a, R> {
-    WrappedToken::new(source, StringLiteral(string.as_bytes().to_vec()))
+pub fn lit(bytes: Vec<u8>) -> Token {
+    StringLiteral(bytes)
 }
 
-pub fn num<'a, R: Read>(source: &'a Lexer<R>, bytes: Vec<u8>) -> WrappedToken<'a, R> {
-    let num = source.string_pool.pool(bytes);
-    WrappedToken::new(source, Num(num))
+pub fn lit_str(string: &'static str) -> Token {
+    StringLiteral(string.as_bytes().to_vec())
+}
+
+pub fn num(pool: &StringPool, bytes: Vec<u8>) -> Token {
+    let num = pool.pool(bytes);
+    Num(num)
 }

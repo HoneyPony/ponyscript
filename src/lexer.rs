@@ -2,19 +2,18 @@ use std::io::{BufReader, Read};
 
 use crate::string_pool::{PoolS, StringPool};
 
-mod token;
+pub mod token;
 mod matcher;
 mod predicates;
 
 pub use token::Token;
-pub use token::WrappedToken;
 
 use token::Token::*;
 use predicates::*;
 use matcher::Matcher;
 
-pub struct Lexer<'a, R: Read> {
-    string_pool: &'a StringPool,
+pub struct Lexer<R: Read> {
+    string_pool: StringPool,
     reader: BufReader<R>,
 
     /// The current character that the Lexer has read in from the stream. Should be checked against
@@ -31,14 +30,14 @@ pub struct Lexer<'a, R: Read> {
 //     }
 // }
 
-impl<'a> Lexer<'a, &[u8]> {
-    pub fn from_str(string: &'static str, sp: &'a StringPool) -> Self {
+impl Lexer<&[u8]> {
+    pub fn from_str(string: &'static str) -> Self {
         let reader = BufReader::new(string.as_bytes());
-        Lexer { reader, string_pool: sp, current: Some(b' ') }
+        Lexer { reader, string_pool: StringPool::new(), current: Some(b' ') }
     }
 }
 
-impl<'a, R: Read> Matcher for Lexer<'a, R> {
+impl<R: Read> Matcher for Lexer<R> {
     fn peek(&self) -> Option<u8> {
         self.current
     }
@@ -56,28 +55,28 @@ impl<'a, R: Read> Matcher for Lexer<'a, R> {
     }
 }
 
-impl<'a, R: Read> Lexer<'a, R> {
-    fn new(reader: BufReader<R>, sp: &'a StringPool) -> Self {
-        Lexer { reader, string_pool: sp, current: Some(b' ') }
+impl<R: Read> Lexer<R> {
+    pub fn new(reader: BufReader<R>) -> Self {
+        Lexer { reader, string_pool: StringPool::new(), current: Some(b' ') }
     }
 
-    pub fn next(&mut self) -> WrappedToken<R> {
+    pub fn next(&mut self) -> Token {
         while self.match_fn(is_whitespace).is_some() {}
 
         if self.peek().is_none() {
-            return token::eof(self);
+            return token::eof();
         }
 
         if let Some(mut id) = self.match_to_vec(is_alpha) {
             self.match_onto_vec(&mut id, is_alphanum);
 
-            return token::id(self, id);
+            return token::id(&self.string_pool, id);
         }
 
         if let Some(mut num) = self.match_to_vec(is_num) {
             self.match_onto_vec(&mut num, is_num);
 
-            return token::num(self, num);
+            return token::num(&self.string_pool,num);
         }
 
         if self.match_one(b'"') {
@@ -91,13 +90,13 @@ impl<'a, R: Read> Lexer<'a, R> {
             }
 
             if !self.match_one(b'"') {
-                return token::bad(self);
+                return token::bad();
             }
 
-            return token::lit(self, result);
+            return token::lit( result);
         }
 
-        token::bad(self)
+        token::bad()
     }
 }
 
@@ -109,8 +108,7 @@ mod tests {
 
     #[test]
     fn lex_id() {
-        let sp = StringPool::new();
-        let mut lexer = Lexer::from_str("  abc    hello    AlphaBET canhave12345 mix12and09", &sp);
+        let mut lexer = Lexer::from_str("  abc    hello    AlphaBET canhave12345 mix12and09");
 
         assert!(lexer.next().is_id_str("abc"));
         assert!(lexer.next().is_id_str("hello"));
@@ -121,8 +119,7 @@ mod tests {
 
     #[test]
     fn lex_ascii_string_literal() {
-        let sp = StringPool::new();
-        let mut lexer = Lexer::from_str("    \"string literal\"   \"12__34__5\"    \"!@#$cvbn*()_=|\"   ", &sp);
+        let mut lexer = Lexer::from_str("    \"string literal\"   \"12__34__5\"    \"!@#$cvbn*()_=|\"   ");
 
         assert!(lexer.next().is_lit_str("string literal"));
         assert!(lexer.next().is_lit_str("12__34__5"));
@@ -131,24 +128,21 @@ mod tests {
 
     #[test]
     fn lex_lit_backspace() {
-        let sp = StringPool::new();
-        let mut lexer = Lexer::from_str("   \"\\n\\b\\c\\d\\\"asdf\\\"asdf\"", &sp);
+        let mut lexer = Lexer::from_str("   \"\\n\\b\\c\\d\\\"asdf\\\"asdf\"");
 
         assert!(lexer.next().is_lit_str("\\n\\b\\c\\d\\\"asdf\\\"asdf"));
     }
 
     #[test]
     fn lex_lit_no_end() {
-        let sp = StringPool::new();
-        let mut lexer = Lexer::from_str("    \"oops, no quote", &sp);
+        let mut lexer = Lexer::from_str("    \"oops, no quote");
 
         assert!(lexer.next().is_bad());
     }
 
     #[test]
     fn lex_num() {
-        let sp = StringPool::new();
-        let mut lexer = Lexer::from_str("10   30  20   1531897", &sp);
+        let mut lexer = Lexer::from_str("10   30  20   1531897");
 
         assert!(lexer.next().is_num_str("10"));
         assert!(lexer.next().is_num_str("30"));

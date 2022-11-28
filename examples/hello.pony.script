@@ -1,0 +1,43 @@
+# PonyScript is heavily based on GodotScript. In fact, it is basically entirely
+# based on GodotScript.
+#
+# As such, every single script is implicitly attached to a Node of some sort.
+# This means that variables declared at the top level are basically, variables
+# that are members of that Node type.
+
+var timer = 1.0
+
+# Variable syntax: var <name> : <type> = <expression>
+# Could steal from Odin, and do var name := expression or you put the type
+
+# All node references are nullable, because node references can become invalidated
+# at (almost) any time, if a node is deleted from the scene tree.
+
+var node: Node = null
+
+# Nothing else is nullable by default though.
+
+# Needs type declaration!
+var array = []
+
+# Maybe like this?
+var array: Array[int] = []
+
+# Or maybe like this?
+var array: []int = []
+
+# Of course, we also want sets and stuff...
+
+var set: Set[int]
+
+var map: Map[int,String]
+
+# Maybe the language can be, basically, Java but compiled to C, but also like
+# GodotScript?
+
+# Anyways... some top-level expressions, for the parser...
+# var <something> : <type> = <expression>
+# fun <name> ( <param-list> ) :
+
+fun hello():
+    print("Hello, world!")
