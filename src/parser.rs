@@ -2,6 +2,7 @@ use std::io::{BufReader, Read};
 use crate::ast;
 use crate::ast::{Func, Node};
 use crate::ast::Node::{Empty, ParseError};
+use crate::ast::Type::Error;
 use crate::lexer::{Lexer, Token};
 use crate::string_pool::{PoolS, StringPool};
 use crate::lexer::token;
@@ -46,6 +47,45 @@ impl<R: Read> Parser<R> {
         }
     }
 
+    fn parse_id_type(&mut self) -> Option<ast::Type> {
+        if let Some(id) = self.eat_id() {
+            if self.eat(Token::LBracket) {
+                let mut inner = vec![];
+
+                loop {
+                    let next_type = self.parse_type();
+                    if let Some(next_type) = next_type {
+                        inner.push(next_type);
+                        if !self.eat(Token::Comma) {
+                            if self.eat(Token::RBracket) {
+                                return Some(ast::Type::Parameterized(id, inner));
+                            } else {
+                                return None;
+                            }
+                        }
+                    }
+                    else {
+                        return None;
+                    }
+                }
+            }
+            else {
+                return Some(ast::Type::Primitive(id));
+            }
+        }
+        None
+    }
+
+    fn parse_type(&mut self) -> Option<ast::Type> {
+        if self.eat(Token::Plus) {
+            return self.parse_id_type().map(|inner| ast::Type::Deref(Box::new(inner)));
+        }
+        if self.eat(Token::QuestionMark) {
+            return self.parse_id_type().map(|inner| ast::Type::Optional(Box::new(inner)));
+        }
+        return self.parse_id_type();
+    }
+
     fn parse_let(&mut self) -> ast::Node {
         self.advance();
         if let Some(id) = self.eat_id() {
@@ -53,7 +93,7 @@ impl<R: Read> Parser<R> {
                 return ast::err("Expected ':' after identifier");
             }
 
-            if let Some(typ) = self.eat_id() {
+            if let Some(typ) = self.parse_type() {
                 return ast::Declaration::new(id, typ).to_node();
             } else {
                 return ast::err("Expected type after ':'");

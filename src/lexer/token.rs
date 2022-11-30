@@ -11,6 +11,11 @@ pub enum Token {
     LParen,
     RParen,
     Colon,
+    Plus,
+    QuestionMark,
+    LBracket,
+    RBracket,
+    Comma,
     KeyLet,
     KeyFun,
     BadLex,
@@ -74,6 +79,11 @@ impl Debug for Token {
             Colon => { f.write_str("[:]") }
             KeyLet => { f.write_str("[KeyLet]") }
             KeyFun => { f.write_str("[KeyFun]") }
+            Plus => { f.write_str("[+]") }
+            QuestionMark => { f.write_str("[?]") }
+            LBracket => { f.write_str("[[]") }
+            RBracket => { f.write_str("[]]") }
+            Comma => { f.write_str("[,]") }
         }
         //
         // match tok {

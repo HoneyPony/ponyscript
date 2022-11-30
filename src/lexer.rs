@@ -168,8 +168,23 @@ impl<R: Read> Lexer<R> {
         if self.match_one(b')') {
             return Token::RParen;
         }
+        if self.match_one(b'[') {
+            return Token::LBracket;
+        }
+        if self.match_one(b']') {
+            return Token::RBracket;
+        }
         if self.match_one(b':') {
             return Token::Colon;
+        }
+        if self.match_one(b'+') {
+            return Token::Plus;
+        }
+        if self.match_one(b'?') {
+            return Token::QuestionMark;
+        }
+        if self.match_one(b',') {
+            return Token::Comma;
         }
 
         token::bad()

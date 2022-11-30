@@ -10,7 +10,8 @@ fn main() {
     let string =
 "fun test():
 \tlet x : int
-\tlet y : int";
+\tlet y : int
+\tlet z : Set[int, +Node]";
 
     let mut parser = Parser::from_str(string);
     let tree = parser.parse();

@@ -3,6 +3,9 @@ use std::io;
 use std::io::Write;
 use crate::string_pool::PoolS;
 
+mod types;
+pub use types::Type;
+
 pub struct Tree {
     pub children: Vec<Node>
 }
@@ -29,11 +32,11 @@ impl Func {
 
 pub struct Declaration {
     pub name: PoolS,
-    pub typ: PoolS
+    pub typ: Type
 }
 
 impl Declaration {
-    pub fn new(name: PoolS, typ: PoolS) -> Self {
+    pub fn new(name: PoolS, typ: Type) -> Self {
         Declaration {
             name,
             typ
