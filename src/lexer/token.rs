@@ -11,7 +11,7 @@ pub enum Token {
     LParen,
     RParen,
     Colon,
-    KeyVar,
+    KeyLet,
     KeyFun,
     BadLex,
     EOF
@@ -25,6 +25,9 @@ impl Token {
     pub fn is_something(&self) -> bool {
         !self.is_eof() && !self.is_bad()
     }
+
+    pub fn is_block_start(&self) -> bool { self == &BlockStart }
+    pub fn is_block_end(&self) -> bool { self == &BlockEnd }
 
     pub fn is_id_str(&self, string: &'static str) -> bool {
         if let ID(str) = self {
@@ -63,7 +66,14 @@ impl Debug for Token {
             BadLex => {
                 f.write_fmt(format_args!("[BadLex]"))
             }
-            _ => { f.write_fmt(format_args!("[Unknown, need to implement]")) }
+
+            BlockStart => { f.write_str("[BlockStart]") }
+            BlockEnd => { f.write_str("[BlockEnd]") }
+            LParen => { f.write_str("[(]") }
+            RParen => { f.write_str("[)]") }
+            Colon => { f.write_str("[:]") }
+            KeyLet => { f.write_str("[KeyLet]") }
+            KeyFun => { f.write_str("[KeyFun]") }
         }
         //
         // match tok {
@@ -105,9 +115,9 @@ pub fn id_or_key(pool: &StringPool, bytes: Vec<u8>) -> Token {
             }
             id(pool, bytes)
         }
-        b'v' => {
-            if &bytes[1..] == b"ar" {
-                return KeyVar
+        b'l' => {
+            if &bytes[1..] == b"et" {
+                return KeyLet
             }
             id(pool, bytes)
         }

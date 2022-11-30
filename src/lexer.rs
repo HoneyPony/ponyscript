@@ -20,7 +20,18 @@ pub struct Lexer<R: Read> {
     /// until some part of the logic wants to advance the stream further.
     current: Option<u8>,
 
-    block_level: i32
+    block_level: i32,
+
+    matched_block_level: i32,
+
+    // The problem with trying to match whitespace block levels is that it requires a bit of state.
+    // In particular, after we match, e.g, some tabs, the lexer is in a state where the next character
+    // is not a tab... the exact same situation as when the lexer starts reading a line where there are
+    // no tabs at the beginning at all.
+    //
+    // So, what we must do instead... keep track of when we've seen a newline, as that is the only state
+    // when we are allowed to match a new BlockStart or BlockEnd.
+    may_match_blocks: bool
 }
 
 // fn is(byte: u8) -> fn(Option<u8>) -> bool {
@@ -35,7 +46,7 @@ pub struct Lexer<R: Read> {
 impl Lexer<&[u8]> {
     pub fn from_str(string: &'static str) -> Self {
         let reader = BufReader::new(string.as_bytes());
-        Lexer { reader, string_pool: StringPool::new(), current: Some(b' '), block_level: 0 }
+        Lexer { reader, string_pool: StringPool::new(), current: Some(b' '), block_level: 0, matched_block_level: 0, may_match_blocks: true }
     }
 }
 
@@ -59,7 +70,7 @@ impl<R: Read> Matcher for Lexer<R> {
 
 impl<R: Read> Lexer<R> {
     pub fn new(reader: BufReader<R>) -> Self {
-        Lexer { reader, string_pool: StringPool::new(), current: Some(b' '), block_level: 0 }
+        Lexer { reader, string_pool: StringPool::new(), current: Some(b' '), block_level: 0, matched_block_level: 0, may_match_blocks: true }
     }
 
     fn try_match_whitespace(&mut self) -> Option<i32> {
@@ -67,9 +78,12 @@ impl<R: Read> Lexer<R> {
         while self.match_one(b'\t') {
             block_level += 1;
         }
+
         while self.match_fn(is_whitespace_but_newline).is_some() {}
         if self.match_one(b'\n') {
-            while self.match_one(b'\n') {}
+            // After seeing a newline is the only time the lexer may match blocks.
+            self.may_match_blocks = true;
+            while self.match_one(b'\n') || self.match_one(b'\r') {}
             return None;
         }
         Some(block_level)
@@ -84,18 +98,38 @@ impl<R: Read> Lexer<R> {
         }
     }
 
-    pub fn next(&mut self) -> Token {
-        let cur_block_level = self.match_whitespace();
-        if cur_block_level > self.block_level {
+    fn make_block_token(&mut self) -> Option<Token> {
+        if self.matched_block_level > self.block_level {
             self.block_level += 1;
-            return Token::BlockStart;
-        }
-        if cur_block_level < self.block_level {
+            return Some(Token::BlockStart)
+        } else if self.matched_block_level < self.block_level {
             self.block_level -= 1;
-            return Token::BlockEnd;
+            return Some(Token::BlockEnd)
+        }
+        None
+    }
+
+    pub fn next(&mut self) -> Token {
+        if let Some(block) = self.make_block_token() {
+            return block;
+        }
+
+        let new_block_level = self.match_whitespace();
+        let may_match_blocks = self.may_match_blocks;
+        self.may_match_blocks = false; // TODO: Don't do this weird variable juggle
+        if may_match_blocks {
+            self.matched_block_level = new_block_level;
+            if let Some(block) = self.make_block_token() {
+                return block;
+            }
         }
 
         if self.peek().is_none() {
+            if self.block_level > 0 {
+                self.block_level -= 1;
+                self.matched_block_level -= 1;
+                return Token::BlockEnd;
+            }
             return token::eof();
         }
 
@@ -190,5 +224,20 @@ mod tests {
         assert!(lexer.next().is_num_str("30"));
         assert!(lexer.next().is_num_str("20"));
         assert!(lexer.next().is_num_str("1531897"));
+    }
+
+    #[test]
+    fn lex_blocks() {
+        let mut lexer = Lexer::from_str("abc1\n\tabc2\n\t\tabc3");
+
+        assert!(lexer.next().is_id_str("abc1"));
+        assert!(lexer.next().is_block_start());
+        let next = lexer.next();
+        assert!(next.is_id_str("abc2"), "expected abc2 got {:?}", next);
+        assert!(lexer.next().is_block_start());
+        assert!(lexer.next().is_id_str("abc3"));
+        assert!(lexer.next().is_block_end());
+        let next = lexer.next();
+        assert!(next.is_block_end(), "expected [BlockEnd] got {:?}", next);
     }
 }

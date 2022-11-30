@@ -9,14 +9,13 @@ use crate::parser::Parser;
 fn main() {
     let string =
 "fun test():
-\tlet x := 5
-\tlet y := 7
+\tlet x : int
+\tlet y : int";
 
-\t
-";
-
-    let mut parser = Parser::from_str("fun test():");
+    let mut parser = Parser::from_str(string);
     let tree = parser.parse();
+
+    dbg!(&tree);
 
     ast::codegen(&tree, &mut stdout()).expect("Failed to write");
 }

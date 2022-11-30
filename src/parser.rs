@@ -3,7 +3,7 @@ use crate::ast;
 use crate::ast::{Func, Node};
 use crate::ast::Node::{Empty, ParseError};
 use crate::lexer::{Lexer, Token};
-use crate::string_pool::StringPool;
+use crate::string_pool::{PoolS, StringPool};
 use crate::lexer::token;
 
 pub struct Parser<R: Read> {
@@ -31,6 +31,14 @@ impl<R: Read> Parser<R> {
         else { false }
     }
 
+    fn eat_id(&mut self) -> Option<PoolS> {
+        if let Token::ID(string) = self.current {
+            self.advance();
+            return Some(string);
+        }
+        None
+    }
+
     pub fn new(lexer: Lexer<R>) -> Self {
        Parser {
             lexer,
@@ -38,11 +46,38 @@ impl<R: Read> Parser<R> {
         }
     }
 
+    fn parse_let(&mut self) -> ast::Node {
+        self.advance();
+        if let Some(id) = self.eat_id() {
+            if !self.eat(Token::Colon) {
+                return ast::err("Expected ':' after identifier");
+            }
+
+            if let Some(typ) = self.eat_id() {
+                return ast::Declaration::new(id, typ).to_node();
+            }
+            else {
+                return ast::err("Expected type after ':'");
+            }
+        }
+        ast::err("Expected identifier after let")
+    }
+
+    fn parse_statement(&mut self) -> ast::Node {
+        match &self.current {
+            Token::KeyLet => {
+                self.parse_let()
+            }
+            _ => {
+                ast::err("Unknown statement")
+            }
+        }
+    }
+
     fn parse_fun(&mut self) -> ast::Node {
         self.advance();
-        if let Token::ID(id) = self.current {
+        if let Some(id) = self.eat_id() {
             let mut result = Func::new(id);
-            self.advance();
 
             if !self.eat(Token::LParen) {
                 return ast::err("Expected '(' after function name");
@@ -69,7 +104,14 @@ impl<R: Read> Parser<R> {
                 return ast::err("Expected ':' after function name");
             }
 
+            if !self.eat(Token::BlockStart) {
+                return ast::err("Expected block after function");
+            }
 
+            while !self.eat(Token::BlockEnd) {
+                let statement = self.parse_statement();
+                result.body.push(statement);
+            }
 
             return result.to_node();
         }
@@ -83,7 +125,7 @@ impl<R: Read> Parser<R> {
             Token::KeyFun => self.parse_fun(),
             _ => {
                 self.advance();
-                ast::err("Unexpected token")
+                ast::err("Unexpected token at top level. Expected 'fun'")
             }
         }
     }

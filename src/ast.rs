@@ -1,4 +1,4 @@
-use std::fmt::{Debug, Formatter};
+use std::fmt::{Debug, DebugList, Formatter};
 use std::io;
 use std::io::Write;
 use crate::string_pool::PoolS;
@@ -27,9 +27,26 @@ impl Func {
     }
 }
 
+pub struct Declaration {
+    pub name: PoolS,
+    pub typ: PoolS
+}
+
+impl Declaration {
+    pub fn new(name: PoolS, typ: PoolS) -> Self {
+        Declaration {
+            name,
+            typ
+        }
+    }
+
+    pub fn to_node(self) -> Node { return Node::Decl(self) }
+}
+
 pub enum Node {
     Tree(Tree),
     Func(Func),
+    Decl(Declaration),
     ParseError(String),
     Empty
 }
@@ -63,13 +80,19 @@ pub fn err(string: &'static str) -> Node {
 pub fn codegen<W: Write>(node: &Node, writer: &mut W) -> io::Result<()> {
     match node {
         Node::Func(f) => {
-            writer.write_fmt(format_args!("void {} {{\
-            }}", f.name))?;
+            writer.write_fmt(format_args!("void {}() {{\n", f.name))?;
+            for s in &f.body {
+                codegen(s, writer)?;
+            }
+            writer.write(b"}\n")?;
         }
         Node::Tree(tree) => {
             for child in &tree.children {
                 codegen::<W>(child, writer)?;
             }
+        }
+        Node::Decl(dec) => {
+            writer.write_fmt(format_args!("{} {};\n", dec.typ, dec.name))?;
         }
         _ => {
 
