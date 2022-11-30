@@ -8,7 +8,7 @@ use crate::parser::Parser;
 
 fn main() {
     let string =
-"fun test():
+"fun test() -> float:
 \tlet x : int
 \tlet y : int
 \tlet z : Set[int, +Node]";

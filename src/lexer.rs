@@ -186,6 +186,12 @@ impl<R: Read> Lexer<R> {
         if self.match_one(b',') {
             return Token::Comma;
         }
+        if self.match_one(b'-') {
+            if self.match_one(b'>') {
+                return Token::RArrow;
+            }
+            return Token::Minus;
+        }
 
         token::bad()
     }
@@ -196,6 +202,7 @@ mod tests {
     
     
     use super::{Lexer};
+    use super::Token;
 
     #[test]
     fn lex_id() {
@@ -254,5 +261,13 @@ mod tests {
         assert!(lexer.next().is_block_end());
         let next = lexer.next();
         assert!(next.is_block_end(), "expected [BlockEnd] got {:?}", next);
+    }
+
+    #[test]
+    fn lex_plus_minus_arrow() {
+        let mut lexer = Lexer::from_str("+ - ->");
+        assert_eq!(lexer.next(), Token::Plus);
+        assert_eq!(lexer.next(), Token::Minus);
+        assert_eq!(lexer.next(), Token::RArrow);
     }
 }

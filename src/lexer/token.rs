@@ -12,6 +12,8 @@ pub enum Token {
     RParen,
     Colon,
     Plus,
+    Minus,
+    RArrow,
     QuestionMark,
     LBracket,
     RBracket,
@@ -84,6 +86,8 @@ impl Debug for Token {
             LBracket => { f.write_str("[[]") }
             RBracket => { f.write_str("[]]") }
             Comma => { f.write_str("[,]") }
+            Minus => { f.write_str("[-]") }
+            RArrow => { f.write_str("[->]") }
         }
         //
         // match tok {

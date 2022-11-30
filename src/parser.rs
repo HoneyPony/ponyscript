@@ -142,7 +142,13 @@ impl<R: Read> Parser<R> {
         }
 
         self.eat_or_err(Token::RParen, "Expected ')' after function name")?;
-        self.eat_or_err(Token::Colon,"Expected ':' after function name")?;
+
+        // Return type comes after arrow, before colon
+        if self.eat(Token::RArrow) {
+            result.return_type = self.parse_type()?;
+        }
+
+        self.eat_or_err(Token::Colon,"Expected ':' after function")?;
         self.eat_or_err(Token::BlockStart,"Expected block after function")?;
 
         while !self.eat(Token::BlockEnd) {

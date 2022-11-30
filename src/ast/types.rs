@@ -8,6 +8,7 @@ pub enum Type {
     Optional(Box<Type>),
     Deref(Box<Type>),
     Parameterized(PoolS, Vec<Type>),
+    Void,
     Error
 }
 
@@ -29,6 +30,9 @@ impl Display for Type {
                 for other in others {
                     other.fmt(f)?;
                 }
+            }
+            Type::Void => {
+                f.write_str("void")?;
             }
             Type::Error => {
                 f.write_str("BadType")?;

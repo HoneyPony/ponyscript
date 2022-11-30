@@ -12,6 +12,7 @@ pub struct Tree {
 
 pub struct Func {
     pub name: PoolS,
+    pub return_type: Type,
     pub args: Vec<(PoolS, Type)>,
     pub body: Vec<Node>
 }
@@ -20,6 +21,7 @@ impl Func {
     pub fn new(name: PoolS) -> Self {
         Func {
             name,
+            return_type: Type::Void,
             args: vec![],
             body: vec![]
         }
@@ -92,7 +94,7 @@ pub type RNode = Result<Node, String>;
 pub fn codegen<W: Write>(node: &Node, writer: &mut W) -> io::Result<()> {
     match node {
         Node::Func(f) => {
-            writer.write_fmt(format_args!("void {}() {{\n", f.name))?;
+            writer.write_fmt(format_args!("{} {}() {{\n", f.return_type, f.name))?;
             for s in &f.body {
                 codegen(s, writer)?;
             }
