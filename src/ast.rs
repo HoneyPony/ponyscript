@@ -12,7 +12,7 @@ pub struct Tree {
 
 pub struct Func {
     pub name: PoolS,
-    pub args: Vec<(PoolS, PoolS)>,
+    pub args: Vec<(PoolS, Type)>,
     pub body: Vec<Node>
 }
 
@@ -80,6 +80,10 @@ impl Debug for Node {
 }
 
 pub fn err(string: &'static str) -> RNode {
+    Err(String::from(string))
+}
+
+pub fn err_t(string: &'static str) -> Result<Type, String> {
     Err(String::from(string))
 }
 

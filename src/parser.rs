@@ -49,6 +49,10 @@ impl<R: Read> Parser<R> {
         None
     }
 
+    fn eat_id_or_err(&mut self, msg: &'static str) -> Result<PoolS, String> {
+        self.eat_id().ok_or(String::from(msg))
+    }
+
     pub fn new(lexer: Lexer<R>) -> Self {
        Parser {
             lexer,
@@ -56,36 +60,29 @@ impl<R: Read> Parser<R> {
         }
     }
 
-    fn parse_id_type(&mut self) -> Option<ast::Type> {
-        if let Some(id) = self.eat_id() {
-            if self.eat(Token::LBracket) {
-                let mut inner = vec![];
+    fn parse_id_type(&mut self) -> Result<ast::Type, String> {
+        let id = self.eat_id_or_err("Expected identifier")?;
 
-                loop {
-                    let next_type = self.parse_type();
-                    if let Some(next_type) = next_type {
-                        inner.push(next_type);
-                        if !self.eat(Token::Comma) {
-                            if self.eat(Token::RBracket) {
-                                return Some(ast::Type::Parameterized(id, inner));
-                            } else {
-                                return None;
-                            }
-                        }
-                    }
-                    else {
-                        return None;
-                    }
+        if self.eat(Token::LBracket) {
+            let mut inner = vec![];
+
+            loop {
+                let next_type = self.parse_type()?;
+                inner.push(next_type);
+
+                if !self.eat(Token::Comma) {
+                    self.eat_or_err(Token::RBracket, "Expected ',' or ']' in arg list")?;
+
+                    return Ok(ast::Type::Parameterized(id, inner));
                 }
             }
-            else {
-                return Some(ast::Type::Primitive(id));
-            }
         }
-        None
+        else {
+            return Ok(ast::Type::Primitive(id));
+        }
     }
 
-    fn parse_type(&mut self) -> Option<ast::Type> {
+    fn parse_type(&mut self) -> Result<ast::Type, String> {
         if self.eat(Token::Plus) {
             return self.parse_id_type().map(|inner| ast::Type::Deref(Box::new(inner)));
         }
@@ -97,18 +94,12 @@ impl<R: Read> Parser<R> {
 
     fn parse_let(&mut self) -> ast::RNode {
         self.advance();
-        if let Some(id) = self.eat_id() {
-            if !self.eat(Token::Colon) {
-                return ast::err("Expected ':' after identifier");
-            }
 
-            if let Some(typ) = self.parse_type() {
-                return Ok(ast::Declaration::new(id, typ).to_node());
-            } else {
-                return ast::err("Expected type after ':'");
-            }
-        }
-        ast::err("Expected identifier after let")
+        let id = self.eat_id_or_err("Expected identifier after let")?;
+        self.eat_or_err(Token::Colon, "Expected ':' after identifier")?;
+
+        let typ = self.parse_type()?;
+        return Ok(ast::Declaration::new(id, typ).to_node());
 
         // Code sketch for what would be nicer...
         // let id = self.eat_id_or("Expected identifier after let");
@@ -137,35 +128,29 @@ impl<R: Read> Parser<R> {
 
     fn parse_fun(&mut self) -> ast::RNode {
         self.advance();
-        if let Some(id) = self.eat_id() {
-            let mut result = Func::new(id);
 
-            self.eat_or_err(Token::LParen,"Expected '(' after function name")?;
+        let id = self.eat_id_or_err("Unexpected token after 'fun'")?;
 
-            while let Token::ID(param) = self.current {
-                self.eat_or_err(Token::Colon,"Expected ':' after function parameter name")?;
-                // TODO: Implement actual type parser
-                if let Token::ID(typ) = self.current {
-                    result.args.push((param, typ))
-                }
-                else {
-                    return ast::err("Expected type name");
-                }
-            }
+        let mut result = Func::new(id);
 
-            self.eat_or_err(Token::RParen, "Expected ')' after function name")?;
-            self.eat_or_err(Token::Colon,"Expected ':' after function name")?;
-            self.eat_or_err(Token::BlockStart,"Expected block after function")?;
+        self.eat_or_err(Token::LParen,"Expected '(' after function name")?;
 
-            while !self.eat(Token::BlockEnd) {
-                let statement = self.parse_statement();
-                result.body.push(statement?);
-            }
-
-            return result.to_rnode();
+        while let Token::ID(param) = self.current {
+            self.eat_or_err(Token::Colon,"Expected ':' after function parameter name")?;
+            let next_type = self.parse_type()?;
+            result.args.push((param, next_type));
         }
 
-        ast::err("Unexpected token after 'fun'")
+        self.eat_or_err(Token::RParen, "Expected ')' after function name")?;
+        self.eat_or_err(Token::Colon,"Expected ':' after function name")?;
+        self.eat_or_err(Token::BlockStart,"Expected block after function")?;
+
+        while !self.eat(Token::BlockEnd) {
+            let statement = self.parse_statement();
+            result.body.push(statement?);
+        }
+
+        return result.to_rnode();
     }
 
     fn parse_top_level(&mut self) -> ast::RNode {
