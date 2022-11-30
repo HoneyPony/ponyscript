@@ -1,5 +1,5 @@
-use std::fmt::{Display, format, Formatter};
-use std::io;
+use std::fmt::{Display, Formatter};
+
 use std::io::Write;
 use crate::string_pool::PoolS;
 

@@ -1,10 +1,10 @@
-use std::io::{BufReader, Read};
+use std::io::{Read};
 use crate::ast;
 use crate::ast::{Func, Node};
 use crate::ast::Node::{Empty};
-use crate::ast::Type::Error;
+
 use crate::lexer::{Lexer, Token};
-use crate::string_pool::{PoolS, StringPool};
+use crate::string_pool::{PoolS};
 use crate::lexer::token;
 
 pub struct Parser<R: Read> {

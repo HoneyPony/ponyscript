@@ -1,4 +1,4 @@
-use std::fmt::{Debug, format, Formatter, Write};
+use std::fmt::{Debug, Formatter, Write};
 use super::*;
 
 #[derive(PartialEq)]

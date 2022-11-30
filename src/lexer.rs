@@ -193,9 +193,9 @@ impl<R: Read> Lexer<R> {
 
 #[cfg(test)]
 mod tests {
-    use crate::lexer::Token::BadLex;
-    use crate::string_pool::StringPool;
-    use super::{Lexer, Token};
+    
+    
+    use super::{Lexer};
 
     #[test]
     fn lex_id() {
