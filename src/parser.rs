@@ -55,12 +55,24 @@ impl<R: Read> Parser<R> {
 
             if let Some(typ) = self.eat_id() {
                 return ast::Declaration::new(id, typ).to_node();
-            }
-            else {
+            } else {
                 return ast::err("Expected type after ':'");
             }
         }
         ast::err("Expected identifier after let")
+
+        // Code sketch for what would be nicer...
+        // let id = self.eat_id_or("Expected identifier after let");
+        // id.eat_or(Token::Colon, "Expected colon after identifier")
+        // let type = id.eat_id();
+        // ...maybe somethign like that?
+        //
+        //
+        // Or. maybe, somethig like,...
+        // let id = self.eat_id_or("Expected identifier after let").eat_or(Token::Colon, "Expected colon after id");
+        // let typ = self.parse_optional_type();
+        // let expr = self.then_eat(Token::Equals).and(|| self.parse_expression());
+        // return ast::zip((id, typ, expr), |(id, typ, expr)| ast::Declaration::new(id, typ, expr));
     }
 
     fn parse_statement(&mut self) -> ast::Node {

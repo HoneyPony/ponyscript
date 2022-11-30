@@ -41,3 +41,83 @@ var map: Map[int,String]
 
 fun hello():
     print("Hello, world!")
+
+# Thoughts on node references...
+# I know that I want the node types in general to be implemented with generation
+# based references, so that it is possible to detect when a node reference is
+# invalidated.
+#
+# A couple thoughts, though...
+# The 'self' reference should be always, always valid.
+#
+# Perhaps there should be a "valid node" type, which is not, unfortunately, the
+# default, because it's not possible for it to be the default.
+#
+# But... what we can do... is we can make a way to turn an invalid node into
+# a valid one.
+
+let my_target: Node = null
+
+# Maybe we should use var so that it doesn't look too much like a serious language...
+# lol...
+
+fun point_at_target():
+    # This statement is equivalent to "if(!ref_valid(my_target)) return;" in C
+    using my_target
+
+    # Now my_target has type +Node? IDK... need syntax
+    # Maybe even just type valid<Node> or valid[Node] or something... or using[Node]
+
+    # Anyways... one other thing....
+
+    rot = face(dir_to(my_target)) # IDK, random function names... lol...
+
+fun dir_to(node: +Node) -> vec2:
+    return (node.position - position).normalized()
+
+# It should be possible to use this "valid node type" thing as a type. Especially
+# in function arguments, etc.
+#
+# The only thing not allowed to be valid node types are top-level variables, because
+# they are majorly subject to change.
+#
+# The idea is that, in terms of moment-to-moment lines of code, it should (for the
+# most part) be obvious when a variable becomes invalidated. There are even ways
+# that we can handle this when it isn't obvious.
+#
+# But there is no way to prevent a node reference from becoming invalidated in
+# the general case.
+
+# Hmm... so let's say we were to do something sneaky, like this:
+
+var x: Node
+
+fun something-sneaky(): # OO... what if I let you use dashes in names... always wanted to do that, right?
+    using x # Bring x into scope, whatever...
+
+    var p = x.get_parent()
+    p.free() # I guess Godot uses queue_free(), right? Maybe that would be better? Do all the freeing at the end of the frame...? Oh wait... that could be cool... is there a reason I'm not doing that...?
+
+    # Anyways, assuming we are using free, now x is invalidated. Should we try
+    # to detect that? Should we just check x again after every statement in the
+    # using block? Maybe the C compiler could even optimize that out for us... lol...
+
+
+# Types.... types.... types....
+# What kind of types are there?
+# - A couple of value types, built-in
+# - User-defined value types MAYBE, unlikely for now...?
+# - Nodes, through references
+# - Validated nodes / "using" nodes / whatever
+# - Classes? Maybe at somepoint? Not nullable by default, but maybe can be...
+# - Arrays
+# - Sets and maps at some point, hopefully... higher priority than other things
+# - Strings
+#
+# Ok
+#
+# So...
+#
+# Type syntax should be simple then, right?
+#
+# <type> = ( ('+' | '?') <type>) | (<identifier> [ '[' <type> { ',' <type> } ']' ])
