@@ -28,6 +28,10 @@ impl Func {
     pub fn to_node(self) -> Node {
         return Node::Func(self)
     }
+
+    pub fn to_rnode(self) -> RNode {
+        return Ok(self.to_node())
+    }
 }
 
 pub struct Declaration {
@@ -44,13 +48,15 @@ impl Declaration {
     }
 
     pub fn to_node(self) -> Node { return Node::Decl(self) }
+    pub fn to_rnode(self) -> RNode {
+        return Ok(self.to_node())
+    }
 }
 
 pub enum Node {
     Tree(Tree),
     Func(Func),
     Decl(Declaration),
-    ParseError(String),
     Empty
 }
 
@@ -67,18 +73,17 @@ impl Debug for Node {
             Node::Func(func) => {
                 f.write_fmt(format_args!("[func '{}']", func.name))?;
             }
-            Node::ParseError(err) => {
-                f.write_fmt(format_args!("[err '{}']", err))?;
-            }
             _ => { f.write_str("[unknown]")?; }
         }
         Ok(())
     }
 }
 
-pub fn err(string: &'static str) -> Node {
-    Node::ParseError(String::from(string))
+pub fn err(string: &'static str) -> RNode {
+    Err(String::from(string))
 }
+
+pub type RNode = Result<Node, String>;
 
 pub fn codegen<W: Write>(node: &Node, writer: &mut W) -> io::Result<()> {
     match node {

@@ -18,5 +18,7 @@ fn main() {
 
     dbg!(&tree);
 
-    ast::codegen(&tree, &mut stdout()).expect("Failed to write");
+    if let Ok(tree) = tree {
+        ast::codegen(&tree, &mut stdout()).expect("Failed to write");
+    }
 }

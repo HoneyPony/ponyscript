@@ -1,7 +1,7 @@
 use std::io::{BufReader, Read};
 use crate::ast;
 use crate::ast::{Func, Node};
-use crate::ast::Node::{Empty, ParseError};
+use crate::ast::Node::{Empty};
 use crate::ast::Type::Error;
 use crate::lexer::{Lexer, Token};
 use crate::string_pool::{PoolS, StringPool};
@@ -30,6 +30,15 @@ impl<R: Read> Parser<R> {
             true
         }
         else { false }
+    }
+
+    fn eat_or_err(&mut self, tok: Token, msg: &'static str) -> Result<(), String> {
+        if self.eat(tok) {
+            Ok(())
+        }
+        else {
+            Err(String::from(msg))
+        }
     }
 
     fn eat_id(&mut self) -> Option<PoolS> {
@@ -86,7 +95,7 @@ impl<R: Read> Parser<R> {
         return self.parse_id_type();
     }
 
-    fn parse_let(&mut self) -> ast::Node {
+    fn parse_let(&mut self) -> ast::RNode {
         self.advance();
         if let Some(id) = self.eat_id() {
             if !self.eat(Token::Colon) {
@@ -94,7 +103,7 @@ impl<R: Read> Parser<R> {
             }
 
             if let Some(typ) = self.parse_type() {
-                return ast::Declaration::new(id, typ).to_node();
+                return Ok(ast::Declaration::new(id, typ).to_node());
             } else {
                 return ast::err("Expected type after ':'");
             }
@@ -115,7 +124,7 @@ impl<R: Read> Parser<R> {
         // return ast::zip((id, typ, expr), |(id, typ, expr)| ast::Declaration::new(id, typ, expr));
     }
 
-    fn parse_statement(&mut self) -> ast::Node {
+    fn parse_statement(&mut self) -> ast::RNode {
         match &self.current {
             Token::KeyLet => {
                 self.parse_let()
@@ -126,19 +135,15 @@ impl<R: Read> Parser<R> {
         }
     }
 
-    fn parse_fun(&mut self) -> ast::Node {
+    fn parse_fun(&mut self) -> ast::RNode {
         self.advance();
         if let Some(id) = self.eat_id() {
             let mut result = Func::new(id);
 
-            if !self.eat(Token::LParen) {
-                return ast::err("Expected '(' after function name");
-            }
+            self.eat_or_err(Token::LParen,"Expected '(' after function name")?;
 
             while let Token::ID(param) = self.current {
-                if !self.eat(Token::Colon) {
-                    return ast::err("Expected ':' after function parameter name");
-                }
+                self.eat_or_err(Token::Colon,"Expected ':' after function parameter name")?;
                 // TODO: Implement actual type parser
                 if let Token::ID(typ) = self.current {
                     result.args.push((param, typ))
@@ -148,32 +153,24 @@ impl<R: Read> Parser<R> {
                 }
             }
 
-            if !self.eat(Token::RParen) {
-                return ast::err("Expected ')' after function name");
-            }
-
-            if !self.eat(Token::Colon) {
-                return ast::err("Expected ':' after function name");
-            }
-
-            if !self.eat(Token::BlockStart) {
-                return ast::err("Expected block after function");
-            }
+            self.eat_or_err(Token::RParen, "Expected ')' after function name")?;
+            self.eat_or_err(Token::Colon,"Expected ':' after function name")?;
+            self.eat_or_err(Token::BlockStart,"Expected block after function")?;
 
             while !self.eat(Token::BlockEnd) {
                 let statement = self.parse_statement();
-                result.body.push(statement);
+                result.body.push(statement?);
             }
 
-            return result.to_node();
+            return result.to_rnode();
         }
 
         ast::err("Unexpected token after 'fun'")
     }
 
-    fn parse_top_level(&mut self) -> ast::Node {
+    fn parse_top_level(&mut self) -> ast::RNode {
         match self.current {
-            Token::EOF => Empty,
+            Token::EOF => Ok(Empty),
             Token::KeyFun => self.parse_fun(),
             _ => {
                 self.advance();
@@ -182,15 +179,15 @@ impl<R: Read> Parser<R> {
         }
     }
 
-    pub fn parse(&mut self) -> ast::Node {
+    pub fn parse(&mut self) -> ast::RNode {
         self.advance();
 
         let mut tree = ast::Tree { children: vec![] };
 
         while self.current.is_something() {
-            tree.children.push(self.parse_top_level());
+            tree.children.push(self.parse_top_level()?);
         }
 
-        Node::Tree(tree)
+        Ok(Node::Tree(tree))
     }
 }
