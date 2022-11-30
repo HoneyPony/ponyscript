@@ -18,7 +18,9 @@ pub struct Lexer<R: Read> {
 
     /// The current character that the Lexer has read in from the stream. Should be checked against
     /// until some part of the logic wants to advance the stream further.
-    current: Option<u8>
+    current: Option<u8>,
+
+    block_level: i32
 }
 
 // fn is(byte: u8) -> fn(Option<u8>) -> bool {
@@ -33,7 +35,7 @@ pub struct Lexer<R: Read> {
 impl Lexer<&[u8]> {
     pub fn from_str(string: &'static str) -> Self {
         let reader = BufReader::new(string.as_bytes());
-        Lexer { reader, string_pool: StringPool::new(), current: Some(b' ') }
+        Lexer { reader, string_pool: StringPool::new(), current: Some(b' '), block_level: 0 }
     }
 }
 
@@ -57,11 +59,41 @@ impl<R: Read> Matcher for Lexer<R> {
 
 impl<R: Read> Lexer<R> {
     pub fn new(reader: BufReader<R>) -> Self {
-        Lexer { reader, string_pool: StringPool::new(), current: Some(b' ') }
+        Lexer { reader, string_pool: StringPool::new(), current: Some(b' '), block_level: 0 }
+    }
+
+    fn try_match_whitespace(&mut self) -> Option<i32> {
+        let mut block_level = 0;
+        while self.match_one(b'\t') {
+            block_level += 1;
+        }
+        while self.match_fn(is_whitespace_but_newline).is_some() {}
+        if self.match_one(b'\n') {
+            while self.match_one(b'\n') {}
+            return None;
+        }
+        Some(block_level)
+    }
+
+    fn match_whitespace(&mut self) -> i32 {
+        loop {
+            let next = self.try_match_whitespace();
+            if let Some(block_level) = next {
+                return block_level;
+            }
+        }
     }
 
     pub fn next(&mut self) -> Token {
-        while self.match_fn(is_whitespace).is_some() {}
+        let cur_block_level = self.match_whitespace();
+        if cur_block_level > self.block_level {
+            self.block_level += 1;
+            return Token::BlockStart;
+        }
+        if cur_block_level < self.block_level {
+            self.block_level -= 1;
+            return Token::BlockEnd;
+        }
 
         if self.peek().is_none() {
             return token::eof();
@@ -70,7 +102,7 @@ impl<R: Read> Lexer<R> {
         if let Some(mut id) = self.match_to_vec(is_alpha) {
             self.match_onto_vec(&mut id, is_alphanum);
 
-            return token::id(&self.string_pool, id);
+            return token::id_or_key(&self.string_pool, id);
         }
 
         if let Some(mut num) = self.match_to_vec(is_num) {
@@ -94,6 +126,16 @@ impl<R: Read> Lexer<R> {
             }
 
             return token::lit( result);
+        }
+
+        if self.match_one(b'(') {
+            return Token::LParen;
+        }
+        if self.match_one(b')') {
+            return Token::RParen;
+        }
+        if self.match_one(b':') {
+            return Token::Colon;
         }
 
         token::bad()

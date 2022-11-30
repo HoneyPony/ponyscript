@@ -3,17 +3,20 @@ mod string_pool;
 mod parser;
 mod ast;
 
-//use lexer::Lexer;
-//use crate::lexer::Token::EOF;
-//use crate::parser::Parser;
-//use crate::string_pool::StringPool;
+use std::io::stdout;
+use crate::parser::Parser;
 
 fn main() {
-   // let mut parser = Parser::from_str("abc \"string literal\" lmao");
-    /*let mut lex = Lexer::from_str("abc \"string literal\" lmao");
-    loop {
-        let tok = lex.next();
-        dbg!(&tok);
-        if tok.is_eof() { break }
-    }*/
+    let string =
+"fun test():
+\tlet x := 5
+\tlet y := 7
+
+\t
+";
+
+    let mut parser = Parser::from_str("fun test():");
+    let tree = parser.parse();
+
+    ast::codegen(&tree, &mut stdout()).expect("Failed to write");
 }

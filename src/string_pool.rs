@@ -1,6 +1,7 @@
 use std::borrow::BorrowMut;
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
+use std::fmt::{Display, Formatter};
 use std::ptr;
 
 #[derive(Debug)]
@@ -15,6 +16,12 @@ pub struct StringPool {
 pub struct PoolS {
     value: u64,
     pool: *const StringPool
+}
+
+impl Display for PoolS {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        f.write_fmt(format_args!("{}", self.to_utf8()))
+    }
 }
 
 impl PoolS {
