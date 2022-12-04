@@ -38,14 +38,20 @@ impl Func {
 
 pub struct Declaration {
     pub name: PoolS,
-    pub typ: Type
+    pub typ: Type,
+    pub expr: Option<Box<Node>>
 }
 
 impl Declaration {
     pub fn new(name: PoolS, typ: Type) -> Self {
+        Self::new_expr(name, typ, None)
+    }
+
+    pub fn new_expr(name: PoolS, typ: Type, expr: Option<Box<Node>>) -> Self {
         Declaration {
             name,
-            typ
+            typ,
+            expr
         }
     }
 
@@ -55,10 +61,26 @@ impl Declaration {
     }
 }
 
+pub struct NumConst {
+    pub value_str: PoolS,
+    pub typ: Type
+}
+
+impl NumConst {
+    pub fn new(value_str: PoolS, typ: Type) -> Self {
+        NumConst { value_str, typ }
+    }
+
+    pub fn to_node(self) -> Node {
+        Node::NumConst(self)
+    }
+}
+
 pub enum Node {
     Tree(Tree),
     Func(Func),
     Decl(Declaration),
+    NumConst(NumConst),
     Empty
 }
 

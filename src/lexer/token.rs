@@ -13,6 +13,7 @@ pub enum Token {
     Colon,
     Plus,
     Minus,
+    Equals,
     RArrow,
     QuestionMark,
     LBracket,
@@ -85,6 +86,7 @@ impl Debug for Token {
             QuestionMark => { f.write_str("[?]") }
             LBracket => { f.write_str("[[]") }
             RBracket => { f.write_str("[]]") }
+            Equals => { f.write_str("[=]") }
             Comma => { f.write_str("[,]") }
             Minus => { f.write_str("[-]") }
             RArrow => { f.write_str("[->]") }

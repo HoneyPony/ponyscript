@@ -9,7 +9,10 @@ pub enum Type {
     Deref(Box<Type>),
     Parameterized(PoolS, Vec<Type>),
     Void,
-    Error
+    Unset,
+    Error,
+
+    Int32
 }
 
 impl Display for Type {
@@ -34,8 +37,14 @@ impl Display for Type {
             Type::Void => {
                 f.write_str("void")?;
             }
+            Type::Unset => {
+                f.write_str("INFER_ERR")?;
+            }
             Type::Error => {
                 f.write_str("BadType")?;
+            }
+            Type::Int32 => {
+                f.write_str("int32_t")?;
             }
         }
 

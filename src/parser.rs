@@ -92,27 +92,35 @@ impl<R: Read> Parser<R> {
         return self.parse_id_type();
     }
 
+    fn parse_expr(&mut self) -> ast::RNode {
+        match self.current {
+            Token::Num(str) => {
+                self.advance();
+                Ok(ast::NumConst::new(str, ast::Type::Int32).to_node())
+            },
+            _ => { ast::err("Expected expression") }
+        }
+    }
+
     fn parse_let(&mut self) -> ast::RNode {
         self.advance();
 
         let id = self.eat_id_or_err("Expected identifier after let")?;
-        self.eat_or_err(Token::Colon, "Expected ':' after identifier")?;
 
-        let typ = self.parse_type()?;
-        return Ok(ast::Declaration::new(id, typ).to_node());
+        let mut typ = ast::Type::Unset;
 
-        // Code sketch for what would be nicer...
-        // let id = self.eat_id_or("Expected identifier after let");
-        // id.eat_or(Token::Colon, "Expected colon after identifier")
-        // let type = id.eat_id();
-        // ...maybe somethign like that?
-        //
-        //
-        // Or. maybe, somethig like,...
-        // let id = self.eat_id_or("Expected identifier after let").eat_or(Token::Colon, "Expected colon after id");
-        // let typ = self.parse_optional_type();
-        // let expr = self.then_eat(Token::Equals).and(|| self.parse_expression());
-        // return ast::zip((id, typ, expr), |(id, typ, expr)| ast::Declaration::new(id, typ, expr));
+        if self.eat(Token::Colon) {
+            typ = self.parse_type()?;
+        }
+
+        if self.eat(Token::Equals) {
+            let expr = self.parse_expr()?;
+            let expr = Some(Box::new(expr));
+            return Ok(ast::Declaration::new_expr(id, typ, expr).to_node());
+        }
+        else {
+            return Ok(ast::Declaration::new(id, typ).to_node());
+        }
     }
 
     fn parse_statement(&mut self) -> ast::RNode {

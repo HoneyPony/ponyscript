@@ -186,6 +186,9 @@ impl<R: Read> Lexer<R> {
         if self.match_one(b',') {
             return Token::Comma;
         }
+        if self.match_one(b'=') {
+            return Token::Equals;
+        }
         if self.match_one(b'-') {
             if self.match_one(b'>') {
                 return Token::RArrow;
