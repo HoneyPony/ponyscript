@@ -121,3 +121,21 @@ fun something-sneaky(): # OO... what if I let you use dashes in names... always 
 # Type syntax should be simple then, right?
 #
 # <type> = ( ('+' | '?') <type>) | (<identifier> [ '[' <type> { ',' <type> } ']' ])
+
+
+
+# Idea about optional types, possibly...
+# So, map seems reasonably useful in Rust, right?
+#
+# What if we did that as a built-in rather than as a thing?
+#
+# I mean, maybe one day we could have closures... but until then....
+
+fun shoot-bullet():
+	var x = Bullet.instance()
+	get-parent().map p:
+		p.add-child(x)
+
+fun shoot_bullet():
+	var b = Bullet.instance()
+	get_parent()?.add_child(b)

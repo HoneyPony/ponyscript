@@ -1,8 +1,6 @@
-fun add():
+fun add() -> int:
 	let z = 5
 
 fun test():
 	let num: int = 30
 	let x: float = 50
-
-	#add(5)
