@@ -1,0 +1,4 @@
+fun test():
+	let blah: int = 20
+
+	let bleee: int = 30

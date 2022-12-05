@@ -20,6 +20,11 @@ pub struct Lexer<R: Read> {
     /// until some part of the logic wants to advance the stream further.
     current: Option<u8>,
 
+    current_tagline: String, // Used for generating error messages
+
+    current_line: i32, // Used for generating error messages
+    current_column: i32,
+
     block_level: i32,
 
     matched_block_level: i32,
@@ -46,7 +51,8 @@ pub struct Lexer<R: Read> {
 impl Lexer<&[u8]> {
     pub fn from_str(string: &'static str) -> Self {
         let reader = BufReader::new(string.as_bytes());
-        Lexer { reader, string_pool: StringPool::new(), current: Some(b' '), block_level: 0, matched_block_level: 0, may_match_blocks: true }
+        Lexer::new(String::from("[string]"), reader)
+        //Lexer { reader, string_pool: StringPool::new(), current: Some(b' '), block_level: 0, matched_block_level: 0, may_match_blocks: true }
     }
 }
 
@@ -64,13 +70,38 @@ impl<R: Read> Matcher for Lexer<R> {
             if read == 1 { Some(byte[0]) } else { None }
         }).flatten();
 
+        result.map(|byte| {
+            if byte == b'\n' {
+                self.current_line += 1;
+                self.current_column = 1;
+            }
+            else {
+                self.current_column += 1;
+            }
+        });
+
         result
     }
 }
 
 impl<R: Read> Lexer<R> {
-    pub fn new(reader: BufReader<R>) -> Self {
-        Lexer { reader, string_pool: StringPool::new(), current: Some(b' '), block_level: 0, matched_block_level: 0, may_match_blocks: true }
+    pub fn new(tagline: String, reader: BufReader<R>) -> Self {
+        Lexer {
+            reader,
+            string_pool: StringPool::new(),
+            current: Some(b' '),
+            current_tagline: tagline,
+            current_line: 1,
+            current_column: 1,
+            block_level: 0,
+            matched_block_level: 0,
+            may_match_blocks: true
+        }
+    }
+
+    pub fn err_msg(&self, message: &'static str) -> String {
+        format!("{}:{}:{}: {}", self.current_tagline,
+            self.current_line, self.current_column, message)
     }
 
     fn try_match_whitespace(&mut self) -> Option<i32> {

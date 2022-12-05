@@ -103,14 +103,6 @@ impl Debug for Node {
     }
 }
 
-pub fn err(string: &'static str) -> RNode {
-    Err(String::from(string))
-}
-
-pub fn err_t(string: &'static str) -> Result<Type, String> {
-    Err(String::from(string))
-}
-
 pub type RNode = Result<Node, String>;
 
 pub fn codegen<W: Write>(node: &Node, writer: &mut W) -> io::Result<()> {

@@ -32,12 +32,16 @@ impl<R: Read> Parser<R> {
         else { false }
     }
 
+    fn err(&self, msg: &'static str) -> ast::RNode {
+        Err(self.lexer.err_msg(msg))
+    }
+
     fn eat_or_err(&mut self, tok: Token, msg: &'static str) -> Result<(), String> {
         if self.eat(tok) {
             Ok(())
         }
         else {
-            Err(String::from(msg))
+            Err(self.lexer.err_msg(msg))
         }
     }
 
@@ -50,7 +54,7 @@ impl<R: Read> Parser<R> {
     }
 
     fn eat_id_or_err(&mut self, msg: &'static str) -> Result<PoolS, String> {
-        self.eat_id().ok_or(String::from(msg))
+        self.eat_id().ok_or(self.lexer.err_msg(msg))
     }
 
     pub fn new(lexer: Lexer<R>) -> Self {
@@ -98,7 +102,7 @@ impl<R: Read> Parser<R> {
                 self.advance();
                 Ok(ast::NumConst::new(str, ast::Type::Int32).to_node())
             },
-            _ => { ast::err("Expected expression") }
+            _ => { self.err("Expected expression") }
         }
     }
 
@@ -129,7 +133,7 @@ impl<R: Read> Parser<R> {
                 self.parse_let()
             }
             _ => {
-                ast::err("Unknown statement")
+                self.err("Unknown statement")
             }
         }
     }
@@ -173,7 +177,7 @@ impl<R: Read> Parser<R> {
             Token::KeyFun => self.parse_fun(),
             _ => {
                 self.advance();
-                ast::err("Unexpected token at top level. Expected 'fun'")
+                self.err("Unexpected token at top level. Expected 'fun'")
             }
         }
     }
