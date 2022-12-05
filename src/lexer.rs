@@ -111,6 +111,14 @@ impl<R: Read> Lexer<R> {
         }
 
         while self.match_fn(is_whitespace_but_newline).is_some() {}
+
+        // Skip comments
+        if self.match_one(b'#') {
+            while self.peek().map(|c| c != b'\n').unwrap_or(false) {
+                self.advance();
+            }
+        }
+
         if self.match_one(b'\n') {
             // After seeing a newline is the only time the lexer may match blocks.
             self.may_match_blocks = true;
