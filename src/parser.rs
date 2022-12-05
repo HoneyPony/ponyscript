@@ -65,7 +65,7 @@ impl<R: Read> Parser<R> {
     }
 
     fn parse_id_type(&mut self) -> Result<ast::Type, String> {
-        let id = self.eat_id_or_err("Expected identifier")?;
+        let id = self.eat_id_or_err("Expected type")?;
 
         if self.eat(Token::LBracket) {
             let mut inner = vec![];
@@ -82,7 +82,7 @@ impl<R: Read> Parser<R> {
             }
         }
         else {
-            return Ok(ast::Type::Primitive(id));
+            return Ok(ast::Type::Primitive(id).to_specific());
         }
     }
 

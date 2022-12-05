@@ -12,7 +12,27 @@ pub enum Type {
     Unset,
     Error,
 
-    Int32
+    Int32,
+    Float
+}
+
+impl Type {
+    pub fn to_specific(self) -> Type {
+        match self {
+            Type::Primitive(what) => {
+                if what.eq_utf8("int") {
+                    return Type::Int32;
+                }
+                if what.eq_utf8("float") {
+                    return Type::Float;
+                }
+                self
+            }
+            _ => {
+                self
+            }
+        }
+    }
 }
 
 impl Display for Type {
@@ -45,6 +65,9 @@ impl Display for Type {
             }
             Type::Int32 => {
                 f.write_str("int32_t")?;
+            }
+            Type::Float => {
+                f.write_str("float")?;
             }
         }
 
