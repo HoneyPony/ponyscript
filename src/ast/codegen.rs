@@ -5,7 +5,22 @@ pub fn codegen<W: Write>(bindings: &mut Bindings, node: &Node, writer: &mut W) -
     match node {
         Node::Func(f) => {
             let fun = bindings.get_fun(f.bind_id);
-            writer.write_fmt(format_args!("{} {}() {{\n", fun.return_type, fun.output_name))?;
+            writer.write_fmt(format_args!("{} {}(", fun.return_type, fun.output_name))?;
+
+            let mut generate_comma = false;
+            for param in &fun.args {
+                if generate_comma {
+                    writer.write(b", ")?;
+                }
+
+                let binding = bindings.get_var(*param);
+                writer.write_fmt(format_args!("{} {}", binding.typ, binding.output_name))?;
+
+                generate_comma = true;
+            }
+
+            writer.write(b") {\n")?;
+
             for s in &f.body {
                 codegen(bindings,s, writer)?;
             }

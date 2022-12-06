@@ -66,7 +66,11 @@ impl Bindings {
         id
     }
 
-    pub fn get_var(&mut self, id: VarID) -> &mut VarBinding {
+    pub fn get_var(&self, id: VarID) -> &VarBinding {
+        self.var_map.get(&id).unwrap() // TODO: Determine if this unwrap is safe
+    }
+
+    pub fn get_var_mut(&mut self, id: VarID) -> &mut VarBinding {
         self.var_map.get_mut(&id).unwrap() // TODO: Determine if this unwrap is safe
     }
 
@@ -81,7 +85,12 @@ impl Bindings {
         id
     }
 
-    pub fn get_fun(&mut self, id: FunID) -> &mut FunBinding {
+    pub fn get_fun(&self, id: FunID) -> &FunBinding {
+        self.fun_map.get(&id).unwrap() // TODO: Determine if this unwrap is safe
+    }
+
+    pub fn get_fun_mut(&mut self, id: FunID) -> &mut FunBinding {
         self.fun_map.get_mut(&id).unwrap() // TODO: Determine if this unwrap is safe
     }
+
 }

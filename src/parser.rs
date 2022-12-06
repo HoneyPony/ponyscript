@@ -187,11 +187,16 @@ impl<'a, R: Read> Parser<'a, R> {
         self.eat_or_err(Token::LParen,"Expected '(' after function name")?;
 
         while let Token::ID(param) = self.current {
+            self.advance();
             self.eat_or_err(Token::Colon,"Expected ':' after function parameter name")?;
             let next_type = self.parse_type()?;
 
             let var = self.new_var_binding(param, next_type);
             args.push(var);
+
+            if !self.eat(Token::Comma) {
+                break;
+            }
         }
 
         self.eat_or_err(Token::RParen, "Expected ')' after function name")?;

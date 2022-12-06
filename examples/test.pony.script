@@ -1,4 +1,4 @@
-fun add() -> int:
+fun add(x: int, y: int) -> int:
 	let test = 5
 
 fun test():
