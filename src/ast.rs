@@ -4,20 +4,22 @@ use std::io::Write;
 use crate::string_pool::PoolS;
 
 mod types;
+mod codegen;
 pub use types::Type;
+pub use codegen::codegen;
 
-pub enum Binding {
+pub enum BindPoint {
     Unbound(PoolS),
-    BoundTo(i64)
+    BoundTo(u64)
 }
 
-impl Display for Binding {
+impl Display for BindPoint {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
-            Binding::Unbound(s) => {
+            BindPoint::Unbound(s) => {
                 f.write_fmt(format_args!("{}", s))
             },
-            Binding::BoundTo(i64) => {
+            BindPoint::BoundTo(i64) => {
                 f.write_str("[todo]")
             }
         }
@@ -55,20 +57,18 @@ impl Func {
 }
 
 pub struct Declaration {
-    pub name: PoolS,
-    pub typ: Type,
+    pub bind_id: u64,
     pub expr: Option<Box<Node>>
 }
 
 impl Declaration {
-    pub fn new(name: PoolS, typ: Type) -> Self {
-        Self::new_expr(name, typ, None)
+    pub fn new(bind_id: u64) -> Self {
+        Self::new_expr(bind_id, None)
     }
 
-    pub fn new_expr(name: PoolS, typ: Type, expr: Option<Box<Node>>) -> Self {
+    pub fn new_expr(bind_id: u64, expr: Option<Box<Node>>) -> Self {
         Declaration {
-            name,
-            typ,
+            bind_id,
             expr
         }
     }
@@ -98,7 +98,7 @@ pub enum Node {
     Tree(Tree),
     Func(Func),
     Decl(Declaration),
-    Assign(Binding, Box<Node>),
+    Assign(BindPoint, Box<Node>),
     NumConst(NumConst),
     Empty
 }
@@ -123,35 +123,3 @@ impl Debug for Node {
 }
 
 pub type RNode = Result<Node, String>;
-
-pub fn codegen<W: Write>(node: &Node, writer: &mut W) -> io::Result<()> {
-    match node {
-        Node::Func(f) => {
-            writer.write_fmt(format_args!("{} {}() {{\n", f.return_type, f.name))?;
-            for s in &f.body {
-                codegen(s, writer)?;
-            }
-            writer.write(b"}\n")?;
-        }
-        Node::Tree(tree) => {
-            for child in &tree.children {
-                codegen::<W>(child, writer)?;
-            }
-        }
-        Node::Decl(dec) => {
-            writer.write_fmt(format_args!("{} {};\n", dec.typ, dec.name))?;
-        }
-        Node::Assign(bind, expr) => {
-            writer.write_fmt(format_args!("{} = ", bind))?;
-            codegen(expr.as_ref(), writer)?;
-            writer.write(b";\n")?;
-        }
-        Node::NumConst(str) => {
-            writer.write_fmt(format_args!("{}", str.value_str))?;
-        }
-        _ => {
-
-        }
-    }
-    Ok(())
-}

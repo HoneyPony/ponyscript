@@ -2,30 +2,33 @@ use std::io::{Read};
 use crate::ast;
 use crate::ast::{Func, Node};
 use crate::ast::Node::{Empty};
+use crate::bindings::Bindings;
 
 use crate::lexer::{Lexer, Token};
-use crate::string_pool::{PoolS};
+use crate::string_pool::{PoolS, StringPool};
 use crate::lexer::token;
 
-pub struct Parser<R: Read> {
-    lexer: Lexer<R>,
+pub struct Parser<'a, R: Read> {
+    lexer: Lexer<'a, R>,
 
-    current: Token
+    current: Token,
+
+    bindings: &'a mut Bindings
 }
 
-impl Parser<&[u8]> {
-    pub fn from_str(string: &'static str) -> Self {
-        Parser::new(Lexer::from_str(string))
+impl<'a> Parser<'a, &[u8]> {
+    pub fn from_str(pool: &'a StringPool, string: &'static str, bindings: &'a mut Bindings) -> Self {
+        Parser::new(Lexer::from_str(pool,string), bindings)
     }
 }
 
-impl<R: Read> Parser<R> {
+impl<'a, R: Read> Parser<'a, R> {
     fn advance(&mut self) {
         self.current = self.lexer.next();
     }
 
-    fn bind(&mut self, string: PoolS) -> ast::Binding {
-        return ast::Binding::Unbound(string);
+    fn bind(&mut self, string: PoolS) -> ast::BindPoint {
+        return ast::BindPoint::Unbound(string);
     }
 
     fn eat(&mut self, tok: Token) -> bool {
@@ -61,10 +64,11 @@ impl<R: Read> Parser<R> {
         self.eat_id().ok_or(self.lexer.err_msg(msg))
     }
 
-    pub fn new(lexer: Lexer<R>) -> Self {
+    pub fn new(lexer: Lexer<'a, R>, bindings: &'a mut Bindings) -> Self {
        Parser {
             lexer,
-            current: token::bad()
+            current: token::bad(),
+            bindings
         }
     }
 
@@ -124,10 +128,12 @@ impl<R: Read> Parser<R> {
         if self.eat(Token::Equals) {
             let expr = self.parse_expr()?;
             let expr = Some(Box::new(expr));
-            return Ok(ast::Declaration::new_expr(id, typ, expr).to_node());
+            let bind_id = self.bindings.new_binding(id, typ);
+            return Ok(ast::Declaration::new_expr(bind_id, expr).to_node());
         }
         else {
-            return Ok(ast::Declaration::new(id, typ).to_node());
+            let bind_id = self.bindings.new_binding(id, typ);
+            return Ok(ast::Declaration::new(bind_id).to_node());
         }
     }
 

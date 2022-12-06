@@ -13,6 +13,7 @@ pub struct StringPool {
 
 #[derive(Copy, Clone)]
 #[derive(Debug)]
+#[derive(Hash, Eq)]
 pub struct PoolS {
     value: u64,
     pool: *const StringPool

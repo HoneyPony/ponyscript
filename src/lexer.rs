@@ -12,8 +12,8 @@ use token::Token::*;
 use predicates::*;
 use matcher::Matcher;
 
-pub struct Lexer<R: Read> {
-    string_pool: StringPool,
+pub struct Lexer<'a, R: Read> {
+    string_pool: &'a StringPool,
     reader: BufReader<R>,
 
     /// The current character that the Lexer has read in from the stream. Should be checked against
@@ -48,15 +48,15 @@ pub struct Lexer<R: Read> {
 //     }
 // }
 
-impl Lexer<&[u8]> {
-    pub fn from_str(string: &'static str) -> Self {
+impl<'a> Lexer<'a, &[u8]> {
+    pub fn from_str(pool: &'a StringPool, string: &'static str) -> Self {
         let reader = BufReader::new(string.as_bytes());
-        Lexer::new(String::from("[string]"), reader)
+        Lexer::new(pool,String::from("[string]"), reader)
         //Lexer { reader, string_pool: StringPool::new(), current: Some(b' '), block_level: 0, matched_block_level: 0, may_match_blocks: true }
     }
 }
 
-impl<R: Read> Matcher for Lexer<R> {
+impl<'a, R: Read> Matcher for Lexer<'a, R> {
     fn peek(&self) -> Option<u8> {
         self.current
     }
@@ -84,11 +84,11 @@ impl<R: Read> Matcher for Lexer<R> {
     }
 }
 
-impl<R: Read> Lexer<R> {
-    pub fn new(tagline: String, reader: BufReader<R>) -> Self {
+impl<'a, R: Read> Lexer<'a, R> {
+    pub fn new(pool: &'a StringPool, tagline: String, reader: BufReader<R>) -> Self {
         Lexer {
             reader,
-            string_pool: StringPool::new(),
+            string_pool: pool,
             current: Some(b' '),
             current_tagline: tagline,
             current_line: 1,
@@ -241,14 +241,14 @@ impl<R: Read> Lexer<R> {
 
 #[cfg(test)]
 mod tests {
-    
-    
+    use crate::string_pool::StringPool;
     use super::{Lexer};
     use super::Token;
 
     #[test]
     fn lex_id() {
-        let mut lexer = Lexer::from_str("  abc    hello    AlphaBET canhave12345 mix12and09");
+        let mut sp = StringPool::new();
+        let mut lexer = Lexer::from_str(&sp,"  abc    hello    AlphaBET canhave12345 mix12and09");
 
         assert!(lexer.next().is_id_str("abc"));
         assert!(lexer.next().is_id_str("hello"));
@@ -259,7 +259,8 @@ mod tests {
 
     #[test]
     fn lex_ascii_string_literal() {
-        let mut lexer = Lexer::from_str("    \"string literal\"   \"12__34__5\"    \"!@#$cvbn*()_=|\"   ");
+        let mut sp = StringPool::new();
+        let mut lexer = Lexer::from_str(&sp,"    \"string literal\"   \"12__34__5\"    \"!@#$cvbn*()_=|\"   ");
 
         assert!(lexer.next().is_lit_str("string literal"));
         assert!(lexer.next().is_lit_str("12__34__5"));
@@ -268,21 +269,24 @@ mod tests {
 
     #[test]
     fn lex_lit_backspace() {
-        let mut lexer = Lexer::from_str("   \"\\n\\b\\c\\d\\\"asdf\\\"asdf\"");
+        let mut sp = StringPool::new();
+        let mut lexer = Lexer::from_str(&sp,"   \"\\n\\b\\c\\d\\\"asdf\\\"asdf\"");
 
         assert!(lexer.next().is_lit_str("\\n\\b\\c\\d\\\"asdf\\\"asdf"));
     }
 
     #[test]
     fn lex_lit_no_end() {
-        let mut lexer = Lexer::from_str("    \"oops, no quote");
+        let mut sp = StringPool::new();
+        let mut lexer = Lexer::from_str(&sp,"    \"oops, no quote");
 
         assert!(lexer.next().is_bad());
     }
 
     #[test]
     fn lex_num() {
-        let mut lexer = Lexer::from_str("10   30  20   1531897");
+        let mut sp = StringPool::new();
+        let mut lexer = Lexer::from_str(&sp,"10   30  20   1531897");
 
         assert!(lexer.next().is_num_str("10"));
         assert!(lexer.next().is_num_str("30"));
@@ -292,7 +296,8 @@ mod tests {
 
     #[test]
     fn lex_blocks() {
-        let mut lexer = Lexer::from_str("abc1\n\tabc2\n\t\tabc3");
+        let mut sp = StringPool::new();
+        let mut lexer = Lexer::from_str(&sp,"abc1\n\tabc2\n\t\tabc3");
 
         assert!(lexer.next().is_id_str("abc1"));
         assert!(lexer.next().is_block_start());
@@ -307,7 +312,8 @@ mod tests {
 
     #[test]
     fn lex_plus_minus_arrow() {
-        let mut lexer = Lexer::from_str("+ - ->");
+        let mut sp = StringPool::new();
+        let mut lexer = Lexer::from_str(&sp,"+ - ->");
         assert_eq!(lexer.next(), Token::Plus);
         assert_eq!(lexer.next(), Token::Minus);
         assert_eq!(lexer.next(), Token::RArrow);
