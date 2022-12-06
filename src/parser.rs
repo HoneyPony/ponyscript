@@ -1,19 +1,24 @@
 use std::io::{Read};
 use crate::ast;
-use crate::ast::{Func, Node};
+use crate::ast::{Func, Node, Type};
 use crate::ast::Node::{Empty};
 use crate::bindings::Bindings;
 
 use crate::lexer::{Lexer, Token};
 use crate::string_pool::{PoolS, StringPool};
 use crate::lexer::token;
+use crate::parser::scope::Scopes;
+
+mod scope;
 
 pub struct Parser<'a, R: Read> {
     lexer: Lexer<'a, R>,
 
     current: Token,
 
-    bindings: &'a mut Bindings
+    bindings: &'a mut Bindings,
+
+    scope: Scopes
 }
 
 impl<'a> Parser<'a, &[u8]> {
@@ -29,6 +34,12 @@ impl<'a, R: Read> Parser<'a, R> {
 
     fn bind(&mut self, string: PoolS) -> ast::BindPoint {
         return ast::BindPoint::Unbound(string);
+    }
+
+    fn new_binding(&mut self, string: PoolS, typ: Type) -> u64 {
+        let id = self.bindings.new_binding(string, typ);
+        self.scope.add(string, id);
+        id
     }
 
     fn eat(&mut self, tok: Token) -> bool {
@@ -68,7 +79,8 @@ impl<'a, R: Read> Parser<'a, R> {
        Parser {
             lexer,
             current: token::bad(),
-            bindings
+            bindings,
+            scope: Scopes::new()
         }
     }
 
@@ -128,11 +140,11 @@ impl<'a, R: Read> Parser<'a, R> {
         if self.eat(Token::Equals) {
             let expr = self.parse_expr()?;
             let expr = Some(Box::new(expr));
-            let bind_id = self.bindings.new_binding(id, typ);
+            let bind_id = self.new_binding(id, typ);
             return Ok(ast::Declaration::new_expr(bind_id, expr).to_node());
         }
         else {
-            let bind_id = self.bindings.new_binding(id, typ);
+            let bind_id = self.new_binding(id, typ);
             return Ok(ast::Declaration::new(bind_id).to_node());
         }
     }
@@ -164,7 +176,7 @@ impl<'a, R: Read> Parser<'a, R> {
         }
     }
 
-    fn parse_fun(&mut self) -> ast::RNode {
+    fn parse_fun_impl(&mut self) -> ast::RNode {
         self.advance();
 
         let id = self.eat_id_or_err("Unexpected token after 'fun'")?;
@@ -195,6 +207,13 @@ impl<'a, R: Read> Parser<'a, R> {
         }
 
         return result.to_rnode();
+    }
+
+    fn parse_fun(&mut self) -> ast::RNode {
+        self.scope.push();
+        let result = self.parse_fun_impl();
+        self.scope.pop();
+        result
     }
 
     fn parse_top_level(&mut self) -> ast::RNode {

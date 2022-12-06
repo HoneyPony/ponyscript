@@ -17,12 +17,16 @@ pub fn codegen<W: Write>(bindings: &mut Bindings, node: &Node, writer: &mut W) -
         }
         Node::Decl(dec) => {
             let binding = bindings.get(dec.bind_id);
-            writer.write_fmt(format_args!("{} {};\n", binding.output_name, binding.typ))?;
+            writer.write_fmt(format_args!("{} {};\n", binding.typ, binding.output_name))?;
         }
         Node::Assign(bind, expr) => {
-            writer.write_fmt(format_args!("{} = ", bind))?;
-            codegen(bindings,expr.as_ref(), writer)?;
-            writer.write(b";\n")?;
+            if let BindPoint::BoundTo(bind_id) = bind {
+                let binding = bindings.get(*bind_id);
+                writer.write_fmt(format_args!("{} = ", binding.output_name))?;
+                codegen(bindings, expr.as_ref(), writer)?;
+                writer.write(b";\n")?;
+            }
+            // TODO: Return an error, maybe...?
         }
         Node::NumConst(str) => {
             writer.write_fmt(format_args!("{}", str.value_str))?;

@@ -1,8 +1,5 @@
 fun add() -> int:
-	let z = 5
+	let test = 5
 
 fun test():
-	let num: int = 30
-	let x: float = 50
-
-	x = 5
+	let test = 20
