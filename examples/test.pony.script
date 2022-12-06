@@ -4,3 +4,5 @@ fun add() -> int:
 fun test():
 	let num: int = 30
 	let x: float = 50
+
+	x = 5

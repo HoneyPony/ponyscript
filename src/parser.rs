@@ -24,6 +24,10 @@ impl<R: Read> Parser<R> {
         self.current = self.lexer.next();
     }
 
+    fn bind(&mut self, string: PoolS) -> ast::Binding {
+        return ast::Binding::Unbound(string);
+    }
+
     fn eat(&mut self, tok: Token) -> bool {
         if self.current == tok {
             self.advance();
@@ -127,10 +131,26 @@ impl<R: Read> Parser<R> {
         }
     }
 
+    fn parse_statement_id(&mut self) -> ast::RNode {
+        let id = self.eat_id_or_err("Failed to consume identifier when parsing identifier")?;
+        // if self.eat(Token::LParen) {
+        // TODO: Function call
+        //}
+        if self.eat(Token::Equals) {
+            let expr = self.parse_expr()?;
+            return Ok(Node::Assign(self.bind(id), Box::new(expr)));
+        }
+
+        self.err("Expected function call or arithmetic expression")
+    }
+
     fn parse_statement(&mut self) -> ast::RNode {
         match &self.current {
             Token::KeyLet => {
                 self.parse_let()
+            }
+            Token::ID(id) => {
+                self.parse_statement_id()
             }
             _ => {
                 self.err("Unknown statement")

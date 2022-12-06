@@ -1,10 +1,28 @@
-use std::fmt::{Debug, Formatter};
+use std::fmt::{Debug, Display, Formatter, Pointer};
 use std::io;
 use std::io::Write;
 use crate::string_pool::PoolS;
 
 mod types;
 pub use types::Type;
+
+pub enum Binding {
+    Unbound(PoolS),
+    BoundTo(i64)
+}
+
+impl Display for Binding {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Binding::Unbound(s) => {
+                f.write_fmt(format_args!("{}", s))
+            },
+            Binding::BoundTo(i64) => {
+                f.write_str("[todo]")
+            }
+        }
+    }
+}
 
 pub struct Tree {
     pub children: Vec<Node>
@@ -80,6 +98,7 @@ pub enum Node {
     Tree(Tree),
     Func(Func),
     Decl(Declaration),
+    Assign(Binding, Box<Node>),
     NumConst(NumConst),
     Empty
 }
@@ -121,6 +140,14 @@ pub fn codegen<W: Write>(node: &Node, writer: &mut W) -> io::Result<()> {
         }
         Node::Decl(dec) => {
             writer.write_fmt(format_args!("{} {};\n", dec.typ, dec.name))?;
+        }
+        Node::Assign(bind, expr) => {
+            writer.write_fmt(format_args!("{} = ", bind))?;
+            codegen(expr.as_ref(), writer)?;
+            writer.write(b";\n")?;
+        }
+        Node::NumConst(str) => {
+            writer.write_fmt(format_args!("{}", str.value_str))?;
         }
         _ => {
 
