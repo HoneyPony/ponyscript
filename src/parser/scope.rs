@@ -1,22 +1,32 @@
 use std::collections::HashMap;
 use crate::ast::BindPoint;
+use crate::bindings::{FunID, VarID};
 use crate::string_pool::PoolS;
 
 pub struct Scope {
-    bindings: HashMap<PoolS, u64>
+    var_bindings: HashMap<PoolS, VarID>,
+    fun_bindings: HashMap<PoolS, FunID>
 }
 
 impl Scope {
     fn new() -> Self {
-        Scope { bindings: HashMap::new() }
+        Scope { var_bindings: HashMap::new(), fun_bindings: HashMap::new() }
     }
 
-    fn find(&self, name: PoolS) -> Option<u64> {
-        self.bindings.get(&name).map(|x| *x)
+    fn find_var(&self, name: PoolS) -> Option<VarID> {
+        self.var_bindings.get(&name).map(|x| *x)
     }
 
-    fn add(&mut self, name: PoolS, id: u64) {
-        self.bindings.insert(name, id);
+    fn add_var(&mut self, name: PoolS, id: VarID) {
+        self.var_bindings.insert(name, id);
+    }
+
+    fn find_fun(&self, name: PoolS) -> Option<FunID> {
+        self.fun_bindings.get(&name).map(|x| *x)
+    }
+
+    fn add_fun(&mut self, name: PoolS, id: FunID) {
+        self.fun_bindings.insert(name, id);
     }
 }
 
@@ -37,13 +47,13 @@ impl Scopes {
         self.scopes.pop();
     }
 
-    pub fn add(&mut self, name: PoolS, id: u64) {
-        self.scopes.last_mut().map(|scope| scope.add(name, id));
+    pub fn add_var(&mut self, name: PoolS, id: VarID) {
+        self.scopes.last_mut().map(|scope| scope.add_var(name, id));
     }
 
-    pub fn find(&mut self, name: PoolS) -> BindPoint {
+    pub fn find_var(&mut self, name: PoolS) -> BindPoint<VarID> {
         for scope in &self.scopes {
-            if let Some(id) = scope.find(name) {
+            if let Some(id) = scope.find_var(name) {
                 return BindPoint::BoundTo(id);
             }
         }

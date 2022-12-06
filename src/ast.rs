@@ -7,13 +7,14 @@ mod types;
 mod codegen;
 pub use types::Type;
 pub use codegen::codegen;
+use crate::bindings::{FunID, VarID};
 
-pub enum BindPoint {
+pub enum BindPoint<Id> {
     Unbound(PoolS),
-    BoundTo(u64)
+    BoundTo(Id)
 }
 
-impl Display for BindPoint {
+impl<Id> Display for BindPoint<Id> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             BindPoint::Unbound(s) => {
@@ -31,18 +32,14 @@ pub struct Tree {
 }
 
 pub struct Func {
-    pub name: PoolS,
-    pub return_type: Type,
-    pub args: Vec<(PoolS, Type)>,
+    pub bind_id: FunID,
     pub body: Vec<Node>
 }
 
 impl Func {
-    pub fn new(name: PoolS) -> Self {
+    pub fn new(bind_id: FunID) -> Self {
         Func {
-            name,
-            return_type: Type::Void,
-            args: vec![],
+            bind_id,
             body: vec![]
         }
     }
@@ -57,16 +54,16 @@ impl Func {
 }
 
 pub struct Declaration {
-    pub bind_id: u64,
+    pub bind_id: VarID,
     pub expr: Option<Box<Node>>
 }
 
 impl Declaration {
-    pub fn new(bind_id: u64) -> Self {
+    pub fn new(bind_id: VarID) -> Self {
         Self::new_expr(bind_id, None)
     }
 
-    pub fn new_expr(bind_id: u64, expr: Option<Box<Node>>) -> Self {
+    pub fn new_expr(bind_id: VarID, expr: Option<Box<Node>>) -> Self {
         Declaration {
             bind_id,
             expr
@@ -98,7 +95,7 @@ pub enum Node {
     Tree(Tree),
     Func(Func),
     Decl(Declaration),
-    Assign(BindPoint, Box<Node>),
+    Assign(BindPoint<VarID>, Box<Node>),
     NumConst(NumConst),
     Empty
 }
@@ -114,7 +111,7 @@ impl Debug for Node {
                 f.write_str("]")?;
             }
             Node::Func(func) => {
-                f.write_fmt(format_args!("[func '{}']", func.name))?;
+                f.write_fmt(format_args!("[func]"))?;
             }
             _ => { f.write_str("[unknown]")?; }
         }

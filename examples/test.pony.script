@@ -2,4 +2,5 @@ fun add() -> int:
 	let test = 5
 
 fun test():
-	let test = 20
+	let test: int = 20
+

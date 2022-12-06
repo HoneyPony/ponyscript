@@ -2,7 +2,7 @@ use std::io::{Read};
 use crate::ast;
 use crate::ast::{Func, Node, Type};
 use crate::ast::Node::{Empty};
-use crate::bindings::Bindings;
+use crate::bindings::{Bindings, VarID};
 
 use crate::lexer::{Lexer, Token};
 use crate::string_pool::{PoolS, StringPool};
@@ -32,13 +32,13 @@ impl<'a, R: Read> Parser<'a, R> {
         self.current = self.lexer.next();
     }
 
-    fn bind(&mut self, string: PoolS) -> ast::BindPoint {
+    fn bind_var(&mut self, string: PoolS) -> ast::BindPoint<VarID> {
         return ast::BindPoint::Unbound(string);
     }
 
-    fn new_binding(&mut self, string: PoolS, typ: Type) -> u64 {
-        let id = self.bindings.new_binding(string, typ);
-        self.scope.add(string, id);
+    fn new_var_binding(&mut self, string: PoolS, typ: Type) -> VarID {
+        let id = self.bindings.new_var_binding(string, typ);
+        self.scope.add_var(string, id);
         id
     }
 
@@ -140,11 +140,11 @@ impl<'a, R: Read> Parser<'a, R> {
         if self.eat(Token::Equals) {
             let expr = self.parse_expr()?;
             let expr = Some(Box::new(expr));
-            let bind_id = self.new_binding(id, typ);
+            let bind_id = self.new_var_binding(id, typ);
             return Ok(ast::Declaration::new_expr(bind_id, expr).to_node());
         }
         else {
-            let bind_id = self.new_binding(id, typ);
+            let bind_id = self.new_var_binding(id, typ);
             return Ok(ast::Declaration::new(bind_id).to_node());
         }
     }
@@ -156,7 +156,7 @@ impl<'a, R: Read> Parser<'a, R> {
         //}
         if self.eat(Token::Equals) {
             let expr = self.parse_expr()?;
-            return Ok(Node::Assign(self.bind(id), Box::new(expr)));
+            return Ok(Node::Assign(self.bind_var(id), Box::new(expr)));
         }
 
         self.err("Expected function call or arithmetic expression")
@@ -181,32 +181,38 @@ impl<'a, R: Read> Parser<'a, R> {
 
         let id = self.eat_id_or_err("Unexpected token after 'fun'")?;
 
-        let mut result = Func::new(id);
+        let mut args = vec![];
+        let mut return_type = Type::Void;
 
         self.eat_or_err(Token::LParen,"Expected '(' after function name")?;
 
         while let Token::ID(param) = self.current {
             self.eat_or_err(Token::Colon,"Expected ':' after function parameter name")?;
             let next_type = self.parse_type()?;
-            result.args.push((param, next_type));
+
+            let var = self.new_var_binding(param, next_type);
+            args.push(var);
         }
 
         self.eat_or_err(Token::RParen, "Expected ')' after function name")?;
 
         // Return type comes after arrow, before colon
         if self.eat(Token::RArrow) {
-            result.return_type = self.parse_type()?;
+            return_type = self.parse_type()?;
         }
 
         self.eat_or_err(Token::Colon,"Expected ':' after function")?;
         self.eat_or_err(Token::BlockStart,"Expected block after function")?;
 
+        let func_id = self.bindings.new_fun_binding(id, return_type, args);
+        let mut func = Func::new(func_id);
+
         while !self.eat(Token::BlockEnd) {
             let statement = self.parse_statement();
-            result.body.push(statement?);
+            func.body.push(statement?);
         }
 
-        return result.to_rnode();
+        return func.to_rnode();
     }
 
     fn parse_fun(&mut self) -> ast::RNode {
