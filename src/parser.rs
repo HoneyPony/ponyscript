@@ -2,7 +2,7 @@ use std::io::{Read};
 use crate::ast;
 use crate::ast::{Func, Node, Type};
 use crate::ast::Node::{Empty};
-use crate::bindings::{Bindings, VarID};
+use crate::bindings::{Bindings, FunID, VarID};
 
 use crate::lexer::{Lexer, Token};
 use crate::string_pool::{PoolS, StringPool};
@@ -33,7 +33,11 @@ impl<'a, R: Read> Parser<'a, R> {
     }
 
     fn bind_var(&mut self, string: PoolS) -> ast::BindPoint<VarID> {
-        return ast::BindPoint::Unbound(string);
+        self.scope.find_var(string)
+    }
+
+    fn unresolved_fun(&mut self, name: PoolS) -> ast::BindPoint<FunID> {
+        return ast::BindPoint::Unbound(name);
     }
 
     fn new_var_binding(&mut self, string: PoolS, typ: Type) -> VarID {
@@ -151,9 +155,22 @@ impl<'a, R: Read> Parser<'a, R> {
 
     fn parse_statement_id(&mut self) -> ast::RNode {
         let id = self.eat_id_or_err("Failed to consume identifier when parsing identifier")?;
-        // if self.eat(Token::LParen) {
-        // TODO: Function call
-        //}
+        if self.eat(Token::LParen) {
+            let mut args = vec![];
+            loop {
+                args.push(self.parse_expr()?);
+
+                if !self.eat(Token::Comma) {
+                    if self.eat(Token::RParen) {
+                        break;
+                    }
+                    return self.err("Expected ')' or ',' in function call");
+                }
+            }
+            // We can't actually bind to a specific function call yet, even if we have seen it...
+            // In particular, resolving which function to bind to has to be done with type information.
+            return Ok(Node::FunCall(self.unresolved_fun(id), args));
+        }
         if self.eat(Token::Equals) {
             let expr = self.parse_expr()?;
             return Ok(Node::Assign(self.bind_var(id), Box::new(expr)));

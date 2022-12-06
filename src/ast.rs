@@ -97,6 +97,7 @@ pub enum Node {
     Decl(Declaration),
     Assign(BindPoint<VarID>, Box<Node>),
     NumConst(NumConst),
+    FunCall(BindPoint<FunID>, Vec<Node>),
     Empty
 }
 

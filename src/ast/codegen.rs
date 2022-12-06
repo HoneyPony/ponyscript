@@ -26,6 +26,22 @@ pub fn codegen<W: Write>(bindings: &mut Bindings, node: &Node, writer: &mut W) -
             }
             writer.write(b"}\n")?;
         }
+        Node::FunCall(bind, args) => {
+            if let BindPoint::BoundTo(fun) = bind {
+                let fun = bindings.get_fun(*fun);
+
+                writer.write_fmt(format_args!("{}(", fun.output_name))?;
+                let mut generate_comma = false;
+                for arg in args {
+                    if generate_comma { writer.write(b", ")?; }
+
+                    codegen(bindings, arg, writer)?;
+
+                    generate_comma = true;
+                }
+                writer.write(b");\n")?;
+            }
+        }
         Node::Tree(tree) => {
             for child in &tree.children {
                 codegen::<W>(bindings,child, writer)?;

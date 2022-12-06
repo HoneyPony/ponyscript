@@ -4,3 +4,7 @@ fun add(x: int, y: int) -> int:
 fun test():
 	let test: int = 20
 
+	test = 30
+
+	add(20, 30)
+
