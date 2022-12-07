@@ -38,7 +38,12 @@ pub fn type_match_var(var_type: &mut Type, expr_type: &Type) -> bool {
                 return type_match_var(inner, expr_type);
             }
         }
-        _ => { return var_type == expr_type }
+        _ => {
+            if let Type::UnspecificNumeric = expr_type {
+                return var_type.is_specific_numeric();
+            }
+            return var_type == expr_type
+        }
     }
 }
 

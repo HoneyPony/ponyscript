@@ -37,6 +37,14 @@ impl Type {
             }
         }
     }
+
+    pub fn is_specific_numeric(&self) -> bool {
+        match self {
+            Type::Float => true,
+            Type::Int32 => true,
+            _ => false
+        }
+    }
 }
 
 impl Display for Type {
