@@ -1,6 +1,6 @@
 use std::io::{Read};
 use crate::ast;
-use crate::ast::{Func, Node, Type};
+use crate::ast::{FunDecl, Node, Type};
 use crate::ast::Node::{Empty};
 use crate::bindings::{Bindings, FunID, VarID};
 
@@ -227,7 +227,7 @@ impl<'a, R: Read> Parser<'a, R> {
         self.eat_or_err(Token::BlockStart,"Expected block after function")?;
 
         let func_id = self.bindings.new_fun_binding(id, return_type, args);
-        let mut func = Func::new(func_id);
+        let mut func = FunDecl::new(func_id);
 
         while !self.eat(Token::BlockEnd) {
             let statement = self.parse_statement();

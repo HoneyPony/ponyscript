@@ -3,7 +3,7 @@ use super::*;
 
 pub fn codegen<W: Write>(bindings: &mut Bindings, node: &Node, writer: &mut W) -> io::Result<()> {
     match node {
-        Node::Func(f) => {
+        Node::FunDecl(f) => {
             let fun = bindings.get_fun(f.bind_id);
             writer.write_fmt(format_args!("{} {}(", fun.return_type, fun.output_name))?;
 

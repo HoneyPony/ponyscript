@@ -50,7 +50,7 @@ pub fn typecheck<'a>(bindings: &mut Bindings, node: &mut Node) -> Result<Type, S
             }
             return Ok(Type::Error);
         }
-        Node::Func(f) => {
+        Node::FunDecl(f) => {
             for node in f.body.iter_mut() {
                 typecheck(bindings, node)?;
             }

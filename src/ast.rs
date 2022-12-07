@@ -33,21 +33,21 @@ pub struct Tree {
     pub children: Vec<Node>
 }
 
-pub struct Func {
+pub struct FunDecl {
     pub bind_id: FunID,
     pub body: Vec<Node>
 }
 
-impl Func {
+impl FunDecl {
     pub fn new(bind_id: FunID) -> Self {
-        Func {
+        FunDecl {
             bind_id,
             body: vec![]
         }
     }
 
     pub fn to_node(self) -> Node {
-        return Node::Func(self)
+        return Node::FunDecl(self)
     }
 
     pub fn to_rnode(self) -> RNode {
@@ -95,7 +95,7 @@ impl NumConst {
 
 pub enum Node {
     Tree(Tree),
-    Func(Func),
+    FunDecl(FunDecl),
     Decl(Declaration),
     Assign(BindPoint<VarID>, Box<Node>),
     NumConst(NumConst),
@@ -113,7 +113,7 @@ impl Debug for Node {
                 }
                 f.write_str("]")?;
             }
-            Node::Func(func) => {
+            Node::FunDecl(func) => {
                 f.write_fmt(format_args!("[func]"))?;
             }
             _ => { f.write_str("[unknown]")?; }
