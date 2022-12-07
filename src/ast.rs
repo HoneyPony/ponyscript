@@ -5,9 +5,11 @@ use crate::string_pool::PoolS;
 
 mod types;
 mod codegen;
+mod typecheck;
 pub use types::Type;
 pub use codegen::codegen;
-use crate::bindings::{FunID, VarID};
+pub use typecheck::typecheck;
+use crate::bindings::{Bindings, FunID, VarID};
 
 pub enum BindPoint<Id> {
     Unbound(PoolS),

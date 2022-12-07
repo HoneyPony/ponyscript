@@ -37,7 +37,10 @@ fn main() {
 
     dbg!(&tree);
 
-    if let Ok(tree) = tree {
+    if let Ok(mut tree) = tree {
+        if let Err(e) = ast::typecheck(&mut bindings, &mut tree) {
+            println!("Typecheck error: {}", e);
+        }
         ast::codegen(&mut bindings,&tree, &mut stdout()).expect("Could not codegen to stdout");
     }
 }

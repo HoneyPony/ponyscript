@@ -3,6 +3,8 @@ use std::fmt::{Display, Formatter};
 use std::io::Write;
 use crate::string_pool::PoolS;
 
+#[derive(Clone)]
+#[derive(PartialEq)]
 pub enum Type {
     Primitive(PoolS),
     Optional(Box<Type>),
@@ -13,7 +15,9 @@ pub enum Type {
     Error,
 
     Int32,
-    Float
+    Float,
+
+    UnspecificNumeric
 }
 
 impl Type {
@@ -68,6 +72,9 @@ impl Display for Type {
             }
             Type::Float => {
                 f.write_str("float")?;
+            }
+            Type::UnspecificNumeric => {
+                f.write_str("NUMERIC_ERR")?;
             }
         }
 

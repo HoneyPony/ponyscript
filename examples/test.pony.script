@@ -1,5 +1,7 @@
 fun add(x: int, y: int) -> int:
-	let test = 5
+	let test
+
+	test = 5
 
 fun test():
 	let test: int = 20
