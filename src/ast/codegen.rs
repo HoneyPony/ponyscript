@@ -63,9 +63,26 @@ pub fn codegen<W: Write>(bindings: &mut Bindings, node: &Node, writer: &mut W) -
         Node::NumConst(str) => {
             writer.write_fmt(format_args!("{}", str.value_str))?;
         }
+        Node::BinOp(op, lhs, rhs) => {
+            codegen_op(bindings, op, lhs, rhs, writer)?;
+        }
         _ => {
 
         }
     }
+    Ok(())
+}
+
+fn codegen_op<W: Write>(bindings: &mut Bindings, op: &Op, lhs: &Box<Node>, rhs: &Box<Node>, writer: &mut W) -> io::Result<()> {
+    // Write the operator function name. This could even allow user-defined operators...
+    writer.write_fmt(format_args!("{}_op_{}(", lhs.get_expr_type(bindings), op.impl_str()))?;
+
+    // Write the operator arguments
+    codegen(bindings, lhs, writer)?;
+    writer.write(b", ")?;
+    codegen(bindings, rhs, writer)?;
+
+    writer.write(b")")?;
+
     Ok(())
 }

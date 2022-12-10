@@ -1,6 +1,6 @@
 use std::io::{Read};
 use crate::ast;
-use crate::ast::{FunDecl, Node, Type};
+use crate::ast::{FunDecl, Node, Op, Type};
 use crate::ast::Node::{Empty};
 use crate::bindings::{Bindings, FunID, VarID};
 
@@ -121,12 +121,22 @@ impl<'a, R: Read> Parser<'a, R> {
     }
 
     fn parse_expr(&mut self) -> ast::RNode {
-        match self.current {
+        let lhs = match self.current {
             Token::Num(str) => {
                 self.advance();
-                Ok(ast::NumConst::new(str, ast::Type::Int32).to_node())
+                Ok(ast::NumConst::new(str, ast::Type::UnspecificNumeric).to_node())
             },
             _ => { self.err("Expected expression") }
+        }?;
+
+        match self.current {
+            Token::Plus => {
+                self.advance();
+                let rhs = self.parse_expr()?;
+
+                ast::op::add(lhs, rhs)
+            }
+            _ => { Ok(lhs) }
         }
     }
 

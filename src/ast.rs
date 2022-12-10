@@ -6,6 +6,7 @@ use crate::string_pool::PoolS;
 mod types;
 mod codegen;
 mod typecheck;
+pub mod op;
 pub use types::Type;
 pub use codegen::codegen;
 pub use typecheck::typecheck;
@@ -93,6 +94,24 @@ impl NumConst {
     }
 }
 
+pub enum Op {
+    Add,
+    Subtract,
+    Multiply,
+    Divide
+}
+
+impl Op {
+    pub fn impl_str(&self) -> &'static str {
+        match self {
+            Op::Add => "add",
+            Op::Subtract => "sub",
+            Op::Multiply => "mul",
+            Op::Divide => "div"
+        }
+    }
+}
+
 pub enum Node {
     Tree(Tree),
     FunDecl(FunDecl),
@@ -100,6 +119,7 @@ pub enum Node {
     Assign(BindPoint<VarID>, Box<Node>),
     NumConst(NumConst),
     FunCall(BindPoint<FunID>, Vec<Node>),
+    BinOp(Op, Box<Node>, Box<Node>),
     Empty
 }
 
@@ -119,6 +139,32 @@ impl Debug for Node {
             _ => { f.write_str("[unknown]")?; }
         }
         Ok(())
+    }
+}
+
+impl Node {
+    pub fn get_expr_type(&self, bindings: &Bindings) -> Type {
+        match &self {
+            Node::Tree(_) => { Type::Error }
+            Node::FunDecl(fun) => {
+                Type::Error
+            }
+            Node::Decl(_) => { Type::Error }
+            Node::Assign(_, _) => { Type::Error }
+            Node::NumConst(num) => {
+                num.typ.clone()
+            }
+            Node::FunCall(bind, _) => {
+                match bind {
+                    BindPoint::Unbound(str) => Type::Error,
+                    BindPoint::BoundTo(bind_id) => bindings.get_fun(*bind_id).return_type.clone()
+                }
+            }
+            Node::BinOp(_, lhs, _) => {
+                lhs.get_expr_type(bindings)
+            }
+            Node::Empty => { Type::Error }
+        }
     }
 }
 

@@ -3,3 +3,10 @@ fun test():
 
 	test = 30
 
+	test = 10 + 20
+
+	let test2 = 20
+
+	test2 = 30
+
+	test2 = 10 + 20
