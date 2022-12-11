@@ -29,13 +29,13 @@ fun j():
 	let test = 10
 
 fun test():
-	let test: int = 20
+	let test: int = 20 + 10
 
 	test = 30
 
 	test = 10 + 20
 
-	let test1 = 20
+	let test1 = 20 + 10
 
 	test1 = 30
 
