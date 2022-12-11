@@ -1,6 +1,10 @@
 use crate::bindings::Bindings;
 use super::*;
 
+mod prelude;
+
+pub use prelude::write_prelude;
+
 pub fn codegen<W: Write>(bindings: &mut Bindings, node: &Node, writer: &mut W) -> io::Result<()> {
     match node {
         Node::FunDecl(f) => {

@@ -4,7 +4,7 @@ use std::io::Write;
 use crate::string_pool::PoolS;
 
 mod types;
-mod codegen;
+pub mod codegen;
 mod typecheck;
 pub mod op;
 pub use types::Type;

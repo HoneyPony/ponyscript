@@ -41,6 +41,11 @@ fn main() {
         if let Err(e) = ast::typecheck(&mut bindings, &mut tree) {
             println!("Typecheck error: {}", e);
         }
-        ast::codegen(&mut bindings,&tree, &mut stdout()).expect("Could not codegen to stdout");
+
+        let output = &mut stdout();
+
+        ast::codegen::write_prelude(output).and_then(|result|
+            ast::codegen(&mut bindings,&tree, output)
+        ).expect("Could not codegen to stdout");
     }
 }
