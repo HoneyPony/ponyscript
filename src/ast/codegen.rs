@@ -53,7 +53,14 @@ pub fn codegen<W: Write>(bindings: &mut Bindings, node: &Node, writer: &mut W) -
         }
         Node::Decl(dec) => {
             let binding = bindings.get_var(dec.bind_id);
-            writer.write_fmt(format_args!("{} {};\n", binding.typ, binding.output_name))?;
+            writer.write_fmt(format_args!("{} {}", binding.typ, binding.output_name))?;
+
+            if let Some(expr) = &dec.expr {
+                writer.write(b" = ")?;
+                codegen(bindings, expr, writer)?;
+            }
+
+            writer.write(b";\n")?;
         }
         Node::Assign(bind, expr) => {
             if let BindPoint::BoundTo(bind_id) = bind {
