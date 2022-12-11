@@ -58,7 +58,7 @@ impl Bindings {
 
     pub fn new_var_binding(&mut self, name: PoolS, typ: Type) -> VarID {
         let num = *self.names.entry(name).and_modify(|x| *x += 1).or_insert(0);
-        let output_name = format!("{}{}", name, num);
+        let output_name = format!("{}_{}", name, num);
 
         let id = VarID(self.grab_id());
         self.var_map.insert(id, VarBinding::new(output_name, typ));
