@@ -1,3 +1,33 @@
+fun a():
+	let test = 10
+
+fun b():
+	let test = 10
+
+fun c():
+	let test = 10
+
+fun d():
+	let test = 10
+
+fun e():
+	let test = 10
+
+fun f():
+	let test = 10
+
+fun g():
+	let test = 10
+
+fun h():
+	let test = 10
+
+fun i():
+	let test = 10
+
+fun j():
+	let test = 10
+
 fun test():
 	let test: int = 20
 
@@ -5,8 +35,9 @@ fun test():
 
 	test = 10 + 20
 
-	let test2 = 20
+	let test1 = 20
 
-	test2 = 30
+	test1 = 30
 
-	test2 = 10 + 20
+	test1 = 10 + 20
+
