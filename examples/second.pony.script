@@ -1,2 +1,4 @@
+extends Node as Second
+
 fun second(x: float):
 	let test = 5

@@ -10,7 +10,7 @@ pub mod op;
 pub use types::Type;
 pub use codegen::codegen;
 pub use typecheck::typecheck;
-use crate::bindings::{Bindings, FunID, VarID};
+use crate::bindings::{Bindings, FunID, Namespace, VarID};
 
 pub enum BindPoint<Id> {
     Unbound(PoolS),
@@ -42,6 +42,8 @@ impl<Id> BindPoint<Id> {
 }
 
 pub struct Tree {
+    pub base_type: PoolS,
+    pub own_type: PoolS,
     pub children: Vec<Node>
 }
 
@@ -130,7 +132,7 @@ pub enum Node {
     Assign(BindPoint<VarID>, Box<Node>),
     VarRef(BindPoint<VarID>),
     NumConst(NumConst),
-    FunCall(BindPoint<FunID>, Vec<Node>),
+    FunCall(Namespace, BindPoint<FunID>, Vec<Node>),
     BinOp(Op, Box<Node>, Box<Node>),
     Empty
 }
@@ -172,7 +174,7 @@ impl Node {
                     BindPoint::BoundTo(bind_id) => bindings.get_var(*bind_id).typ.clone()
                 }
             }
-            Node::FunCall(point, _) => {
+            Node::FunCall(_, point, _) => {
                 match point {
                     BindPoint::Unbound(str) => Type::Error,
                     BindPoint::BoundTo(bind_id) => bindings.get_fun(*bind_id).return_type.clone()

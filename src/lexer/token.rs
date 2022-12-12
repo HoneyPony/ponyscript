@@ -21,6 +21,8 @@ pub enum Token {
     Comma,
     KeyLet,
     KeyFun,
+    KeyExtends,
+    KeyAs,
     BadLex,
     EOF
 }
@@ -82,6 +84,8 @@ impl Debug for Token {
             Colon => { f.write_str("[:]") }
             KeyLet => { f.write_str("[KeyLet]") }
             KeyFun => { f.write_str("[KeyFun]") }
+            KeyAs => { f.write_str("[KeyAs]") }
+            KeyExtends => { f.write_str("[KeyExtends]") }
             Plus => { f.write_str("[+]") }
             QuestionMark => { f.write_str("[?]") }
             LBracket => { f.write_str("[[]") }
@@ -134,6 +138,18 @@ pub fn id_or_key(pool: &StringPool, bytes: Vec<u8>) -> Token {
         b'l' => {
             if &bytes[1..] == b"et" {
                 return KeyLet
+            }
+            id(pool, bytes)
+        }
+        b'e' => {
+            if &bytes[1..] == b"xtends" {
+                return KeyExtends
+            }
+            id(pool, bytes)
+        }
+        b'a' => {
+            if &bytes[1..] == b"s" {
+                return KeyAs
             }
             id(pool, bytes)
         }

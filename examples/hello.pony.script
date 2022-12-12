@@ -1,3 +1,5 @@
+extends Node as Hello
+
 # PonyScript is heavily based on GodotScript. In fact, it is basically entirely
 # based on GodotScript.
 #

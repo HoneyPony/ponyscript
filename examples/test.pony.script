@@ -1,3 +1,5 @@
+extends Node as Test
+
 fun a():
 	let test = 10
 

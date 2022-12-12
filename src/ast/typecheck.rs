@@ -58,7 +58,7 @@ fn propagate_numeric(node: &mut Node, typ: &Type) {
             propagate_numeric(rhs, typ);
             propagate_numeric(lhs, typ);
         }
-        Node::FunCall(_, args) => {
+        Node::FunCall(_, _, args) => {
             for arg in args {
                 propagate_numeric(arg, typ);
             }
@@ -148,14 +148,14 @@ pub fn typecheck<'a>(bindings: &mut Bindings, node: &mut Node) -> Result<Type, S
             }
             return Err(String::from("Could not match types in binary expression"));
         }
-        Node::FunCall(point, args) => {
+        Node::FunCall(namespace, point, args) => {
             for arg in args.iter_mut() {
                 typecheck(bindings, arg)?;
             }
             match point {
                 BindPoint::Unbound(name) => {
                     let binding = bindings
-                        .find_fun_from_compat_nodes(Namespace::Global,*name, args)
+                        .find_fun_from_compat_nodes(*namespace,*name, args)
                         .ok_or(format!("In call to {}, could not find matching arg list", name))?;
 
                     point.bind_to(binding);

@@ -42,7 +42,7 @@ pub fn codegen<W: Write>(bindings: &Bindings, node: &Node, writer: &mut W) -> io
             }
             writer.write(b"}\n")?;
         }
-        Node::FunCall(point, args) => {
+        Node::FunCall(_, point, args) => {
             if let BindPoint::BoundTo(fun) = point {
                 let fun = bindings.get_fun(*fun);
 

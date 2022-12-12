@@ -18,7 +18,9 @@ pub struct Parser<'a, R: Read> {
 
     bindings: &'a mut Bindings,
 
-    scope: Scopes
+    scope: Scopes,
+
+    namespace: Namespace
 }
 
 impl<'a> Parser<'a, &[u8]> {
@@ -84,7 +86,8 @@ impl<'a, R: Read> Parser<'a, R> {
             lexer,
             current: token::bad(),
             bindings,
-            scope: Scopes::new()
+            scope: Scopes::new(),
+            namespace: Namespace::Global
         }
     }
 
@@ -186,7 +189,7 @@ impl<'a, R: Read> Parser<'a, R> {
             }
             // We can't actually bind to a specific function call yet, even if we have seen it...
             // In particular, resolving which function to bind to has to be done with type information.
-            return Ok(Node::FunCall(self.unresolved_fun(id), args));
+            return Ok(Node::FunCall(self.namespace,self.unresolved_fun(id), args));
         }
         else {
             return Ok(Node::VarRef(self.bind_var(id)));
@@ -210,7 +213,7 @@ impl<'a, R: Read> Parser<'a, R> {
         }
 
         // Function calls are valid statements even if there is no equals
-        if let Node::FunCall(_, _) = lhs {
+        if let Node::FunCall(_, _, _) = lhs {
             return Ok(lhs);
         }
 
@@ -266,7 +269,7 @@ impl<'a, R: Read> Parser<'a, R> {
         self.eat_or_err(Token::Colon,"Expected ':' after function")?;
         self.eat_or_err(Token::BlockStart,"Expected block after function")?;
 
-        let func_id = self.bindings.new_fun_binding(Namespace::Global, id, return_type, args)?;
+        let func_id = self.bindings.new_fun_binding(self.namespace, id, return_type, args)?;
         let mut func = FunDecl::new(func_id);
 
         while !self.eat(Token::BlockEnd) {
@@ -298,7 +301,17 @@ impl<'a, R: Read> Parser<'a, R> {
     pub fn parse(&mut self) -> ast::RNode {
         self.advance();
 
-        let mut tree = ast::Tree { children: vec![] };
+        self.eat_or_err(Token::KeyExtends, "Expected 'extends' at top of file")?;
+
+        let base = self.eat_id_or_err("Expected base type at top of file")?;
+
+        self.eat_or_err(Token::KeyAs, "Expected 'as' at top of file")?;
+
+        let own = self.eat_id_or_err("Expected node type at top of file")?;
+
+        self.namespace = Namespace::DynamicCall(own);
+
+        let mut tree = ast::Tree { base_type: base, own_type: own, children: vec![] };
 
         while self.current.is_something() {
             tree.children.push(self.parse_top_level()?);
