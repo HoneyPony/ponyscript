@@ -48,8 +48,14 @@ impl Type {
     }
 
     pub fn eq_or_may_coerce(&self, rhs: &Type) -> bool {
-        if self.is_specific_numeric() {
-            return rhs.is_specific_numeric() || rhs == &UnspecificNumeric;
+        // IF the LHS is a specific number and the RHS is an unspecific number, it is possible that
+        // the LHS can propagate its type to the RHS.
+        //
+        // There used to be a bug, where we said if the RHS is also a specific numeric, it can
+        // coerce... this is NOT TRUE! The only number types allowed to be automatically coerced
+        // are UnspecificNumeric (and, if we add an UnspecificFloat at some point, that one).
+        if self.is_specific_numeric() && rhs == &UnspecificNumeric {
+            return true;
         }
         return self == rhs;
     }
