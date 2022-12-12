@@ -30,9 +30,9 @@ pub fn codegen<W: Write>(bindings: &mut Bindings, node: &Node, writer: &mut W) -
             }
             writer.write(b"}\n")?;
         }
-        Node::FunCall(wrapped, args) => {
-            if let BindPoint::BoundTo(fun) = wrapped.point {
-                let fun = bindings.get_fun(fun);
+        Node::FunCall(point, args) => {
+            if let BindPoint::BoundTo(fun) = point {
+                let fun = bindings.get_fun(*fun);
 
                 writer.write_fmt(format_args!("{}(", fun.output_name))?;
                 let mut generate_comma = false;

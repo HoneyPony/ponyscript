@@ -138,22 +138,22 @@ pub fn typecheck<'a>(bindings: &mut Bindings, node: &mut Node) -> Result<Type, S
             }
             return Err(String::from("Could not match types in binary expression"));
         }
-        Node::FunCall(wrapped, args) => {
+        Node::FunCall(point, args) => {
             for arg in args.iter_mut() {
                 typecheck(bindings, arg)?;
             }
-            match wrapped.point {
+            match point {
                 BindPoint::Unbound(name) => {
                     let binding = bindings
-                        .find_fun_from_compat_nodes(name, args)
+                        .find_fun_from_compat_nodes(*name, args)
                         .ok_or(format!("In call to {}, could not find matching arg list", name))?;
 
-                    wrapped.bind_to(binding);
+                    point.bind_to(binding);
 
                     return Ok(bindings.get_fun(binding).return_type.clone());
                 }
                 BindPoint::BoundTo(id) => {
-                    return Ok(bindings.get_fun(id).return_type.clone());
+                    return Ok(bindings.get_fun(*id).return_type.clone());
                 }
             }
         }

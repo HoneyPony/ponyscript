@@ -17,10 +17,6 @@ pub enum BindPoint<Id> {
     BoundTo(Id)
 }
 
-pub struct WrappedBindPoint<Id> {
-    point: BindPoint<Id>
-}
-
 impl<Id> Display for BindPoint<Id> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
@@ -34,13 +30,14 @@ impl<Id> Display for BindPoint<Id> {
     }
 }
 
-impl<Id> WrappedBindPoint<Id> {
+impl<Id> BindPoint<Id> {
     pub fn unresolved(name: PoolS) -> Self {
-        WrappedBindPoint { point: BindPoint::Unbound(name) }
+        BindPoint::Unbound(name)
     }
 
     pub fn bind_to(&mut self, new_binding: Id) {
-        self.point = BindPoint::BoundTo(new_binding);
+        let old = std::mem::replace(self, BindPoint::BoundTo(new_binding));
+        drop(old);
     }
 }
 
@@ -132,7 +129,7 @@ pub enum Node {
     Decl(Declaration),
     Assign(BindPoint<VarID>, Box<Node>),
     NumConst(NumConst),
-    FunCall(WrappedBindPoint<FunID>, Vec<Node>),
+    FunCall(BindPoint<FunID>, Vec<Node>),
     BinOp(Op, Box<Node>, Box<Node>),
     Empty
 }
@@ -168,10 +165,10 @@ impl Node {
             Node::NumConst(num) => {
                 num.typ.clone()
             }
-            Node::FunCall(wrapped, _) => {
-                match wrapped.point {
+            Node::FunCall(point, _) => {
+                match point {
                     BindPoint::Unbound(str) => Type::Error,
-                    BindPoint::BoundTo(bind_id) => bindings.get_fun(bind_id).return_type.clone()
+                    BindPoint::BoundTo(bind_id) => bindings.get_fun(*bind_id).return_type.clone()
                 }
             }
             Node::BinOp(_, lhs, _) => {

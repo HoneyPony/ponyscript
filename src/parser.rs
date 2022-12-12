@@ -36,8 +36,8 @@ impl<'a, R: Read> Parser<'a, R> {
         self.scope.find_var(string)
     }
 
-    fn unresolved_fun(&mut self, name: PoolS) -> ast::WrappedBindPoint<FunID> {
-        ast::WrappedBindPoint::<FunID>::unresolved(name)
+    fn unresolved_fun(&mut self, name: PoolS) -> ast::BindPoint<FunID> {
+        ast::BindPoint::<FunID>::unresolved(name)
     }
 
     fn new_var_binding(&mut self, string: PoolS, typ: Type) -> VarID {
