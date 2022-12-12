@@ -1,6 +1,6 @@
 use std::io::{Read};
 use crate::ast;
-use crate::ast::{FunDecl, Node, Op, Type};
+use crate::ast::{BindPoint, FunDecl, Node, Op, Type};
 use crate::ast::Node::{Empty};
 use crate::bindings::{Bindings, FunID, VarID};
 
@@ -126,6 +126,9 @@ impl<'a, R: Read> Parser<'a, R> {
                 self.advance();
                 Ok(ast::NumConst::new(str, ast::Type::UnspecificNumeric).to_node())
             },
+            Token::ID(id) => {
+                self.parse_expr_id()
+            }
             _ => { self.err("Expected expression") }
         }?;
 
@@ -163,7 +166,7 @@ impl<'a, R: Read> Parser<'a, R> {
         }
     }
 
-    fn parse_statement_id(&mut self) -> ast::RNode {
+    fn parse_expr_id(&mut self) -> ast::RNode {
         let id = self.eat_id_or_err("Failed to consume identifier when parsing identifier")?;
         if self.eat(Token::LParen) {
             let mut args = vec![];
@@ -181,10 +184,33 @@ impl<'a, R: Read> Parser<'a, R> {
             // In particular, resolving which function to bind to has to be done with type information.
             return Ok(Node::FunCall(self.unresolved_fun(id), args));
         }
-        if self.eat(Token::Equals) {
-            let expr = self.parse_expr()?;
-            return Ok(Node::Assign(self.bind_var(id), Box::new(expr)));
+        else {
+            return Ok(Node::VarRef(self.bind_var(id)));
         }
+    }
+
+    fn parse_statement_id(&mut self) -> ast::RNode {
+        let lhs = self.parse_expr_id()?;
+
+        if self.eat(Token::Equals) {
+            let rhs = self.parse_expr()?;
+
+            match lhs {
+                Node::VarRef(var) => {
+                    return Ok(Node::Assign(var, Box::new(rhs)));
+                }
+                _ => {
+                    return Err(format!("Only variable assignment supported at the moment"));
+                }
+            }
+        }
+
+        // Function calls are valid statements even if there is no equals
+        if let Node::FunCall(_, _) = lhs {
+            return Ok(lhs);
+        }
+
+        // If there is no assignment and no function call, it's not a valid statement (for now).
 
         self.err("Expected function call or arithmetic expression")
     }

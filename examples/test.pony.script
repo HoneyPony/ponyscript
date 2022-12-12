@@ -51,5 +51,5 @@ fun tick(delta: float):
 	let first: int = 10
 	let second: float = 20
 
-	some(10)
-	some(20)
+	some(first)
+	some(second)

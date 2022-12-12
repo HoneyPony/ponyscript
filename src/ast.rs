@@ -128,6 +128,7 @@ pub enum Node {
     FunDecl(FunDecl),
     Decl(Declaration),
     Assign(BindPoint<VarID>, Box<Node>),
+    VarRef(BindPoint<VarID>),
     NumConst(NumConst),
     FunCall(BindPoint<FunID>, Vec<Node>),
     BinOp(Op, Box<Node>, Box<Node>),
@@ -164,6 +165,12 @@ impl Node {
             Node::Assign(_, _) => { Type::Error }
             Node::NumConst(num) => {
                 num.typ.clone()
+            }
+            Node::VarRef(point) => {
+                match point {
+                    BindPoint::Unbound(str) => Type::Error,
+                    BindPoint::BoundTo(bind_id) => bindings.get_var(*bind_id).typ.clone()
+                }
             }
             Node::FunCall(point, _) => {
                 match point {

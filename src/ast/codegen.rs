@@ -77,6 +77,13 @@ pub fn codegen<W: Write>(bindings: &mut Bindings, node: &Node, writer: &mut W) -
         Node::BinOp(op, lhs, rhs) => {
             codegen_op(bindings, op, lhs, rhs, writer)?;
         }
+        Node::VarRef(point) => {
+            if let BindPoint::BoundTo(bind_id) = point {
+                let binding = bindings.get_var(*bind_id);
+                writer.write_fmt(format_args!("{}", binding.output_name))?;
+            }
+            // TODO: Return an error, maybe...?
+        }
         _ => {
 
         }

@@ -120,6 +120,16 @@ pub fn typecheck<'a>(bindings: &mut Bindings, node: &mut Node) -> Result<Type, S
         Node::NumConst(num) => {
             return Ok(num.typ.clone());
         }
+        Node::VarRef(point) => {
+            match point {
+                BindPoint::Unbound(_) => {
+                    return Err(String::from("Unbound ID"));
+                }
+                BindPoint::BoundTo(id) => {
+                    return Ok(bindings.get_var(*id).typ.clone());
+                }
+            }
+        }
         Node::BinOp(_, lhs, rhs) => {
             let mut left = typecheck(bindings, lhs)?;
             let mut right = typecheck(bindings, rhs)?;
