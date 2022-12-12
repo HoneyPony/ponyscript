@@ -236,7 +236,7 @@ impl<'a, R: Read> Parser<'a, R> {
         self.eat_or_err(Token::Colon,"Expected ':' after function")?;
         self.eat_or_err(Token::BlockStart,"Expected block after function")?;
 
-        let func_id = self.bindings.new_fun_binding(id, return_type, args);
+        let func_id = self.bindings.new_fun_binding(id, return_type, args)?;
         let mut func = FunDecl::new(func_id);
 
         while !self.eat(Token::BlockEnd) {

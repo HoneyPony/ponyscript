@@ -37,6 +37,7 @@ pub struct Bindings {
     next: u64,
     var_map: HashMap<VarID, VarBinding>,
     fun_map: HashMap<FunID, FunBinding>,
+    reverse_fun_map: HashMap<PoolS, Vec<(FunID, Vec<VarID>)>>,
     names: HashMap<PoolS, u64>
 }
 
@@ -46,6 +47,7 @@ impl Bindings {
             next: 0,
             var_map: HashMap::new(),
             fun_map: HashMap::new(),
+            reverse_fun_map: HashMap::new(),
             names: HashMap::new()
         }
     }
@@ -74,15 +76,42 @@ impl Bindings {
         self.var_map.get_mut(&id).unwrap() // TODO: Determine if this unwrap is safe
     }
 
-    pub fn new_fun_binding(&mut self, name: PoolS, return_type: Type, args: Vec<VarID>) -> FunID {
+    pub fn new_fun_binding(&mut self, name: PoolS, return_type: Type, args: Vec<VarID>) -> Result<FunID, String> {
+        let existing = self.find_fun_from_vars(name, &args);
+
+        if existing.is_some() {
+            return Err(format!("function {} already defined with these arguments", name));
+        }
+
         // TODO: Possibly support functions with different arguments. Actually, we probably
         // definitely want to do that...
-        let output_name = format!("{}_f", name);
+        let mut output_name = format!("{}_", name);
+        for arg in &args {
+            let typ = &self.get_var(*arg).typ;
+            output_name += &typ.to_string();
+            output_name.push('_');
+        }
 
         let id = FunID(self.grab_id());
+
+        let list = self.reverse_fun_map.entry(name).or_insert(vec![]);
+        list.push((id, args.clone()));
+
         self.fun_map.insert(id, FunBinding::new(output_name, return_type, args));
 
-        id
+        Ok(id)
+    }
+
+    pub fn find_fun_from_vars(&self, name: PoolS, args: &Vec<VarID>) -> Option<FunID> {
+        let options = self.reverse_fun_map.get(&name)?;
+
+        for option in options {
+            if &option.1 == args {
+                return Some(option.0)
+            }
+        }
+
+        None
     }
 
     pub fn get_fun(&self, id: FunID) -> &FunBinding {
