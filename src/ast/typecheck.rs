@@ -1,12 +1,5 @@
 use crate::ast::{BindPoint, Node, Type};
-use crate::bindings::{Bindings, FunID, Namespace, VarID};
-
-fn wrap_option(typ: &Type) -> Type {
-    match typ {
-        Type::Error => Type::Error,
-        _ => Type::Optional(Box::new(typ.clone()))
-    }
-}
+use crate::bindings::{Bindings, VarID};
 
 pub fn type_match_var(var_type: &mut Type, expr_type: &Type) -> bool {
     match var_type {
@@ -105,7 +98,7 @@ pub fn typecheck<'a>(bindings: &mut Bindings, node: &mut Node) -> Result<Type, S
             }
         }
         Node::Assign(bind, expr) => {
-            let expr_type = typecheck(bindings, expr)?;
+            let _expr_type = typecheck(bindings, expr)?;
             // TODO: Re-update bindings
 
             match bind {

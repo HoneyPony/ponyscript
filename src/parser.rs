@@ -1,6 +1,6 @@
 use std::io::{Read};
 use crate::ast;
-use crate::ast::{BindPoint, FunDecl, Node, Op, Type};
+use crate::ast::{FunDecl, Node, Type};
 use crate::ast::Node::{Empty};
 use crate::bindings::{Bindings, FunID, Namespace, VarID};
 
@@ -24,6 +24,7 @@ pub struct Parser<'a, R: Read> {
 }
 
 impl<'a> Parser<'a, &[u8]> {
+    #[allow(unused)]
     pub fn from_str(pool: &'a StringPool, string: &'static str, bindings: &'a mut Bindings) -> Self {
         Parser::new(Lexer::from_str(pool,string), bindings)
     }
@@ -129,7 +130,7 @@ impl<'a, R: Read> Parser<'a, R> {
                 self.advance();
                 Ok(ast::NumConst::new(str, ast::Type::UnspecificNumeric).to_node())
             },
-            Token::ID(id) => {
+            Token::ID(_) => {
                 self.parse_expr_id()
             }
             _ => { self.err("Expected expression") }
@@ -227,7 +228,7 @@ impl<'a, R: Read> Parser<'a, R> {
             Token::KeyLet => {
                 self.parse_let()
             }
-            Token::ID(id) => {
+            Token::ID(_) => {
                 self.parse_statement_id()
             }
             _ => {

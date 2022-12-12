@@ -1,7 +1,5 @@
 use std::fmt::{Display, Formatter};
 
-use std::io::Write;
-use crate::ast::Type::UnspecificNumeric;
 use crate::string_pool::PoolS;
 
 #[derive(Clone)]
@@ -54,7 +52,7 @@ impl Type {
         // There used to be a bug, where we said if the RHS is also a specific numeric, it can
         // coerce... this is NOT TRUE! The only number types allowed to be automatically coerced
         // are UnspecificNumeric (and, if we add an UnspecificFloat at some point, that one).
-        if self.is_specific_numeric() && rhs == &UnspecificNumeric {
+        if self.is_specific_numeric() && rhs == &Type::UnspecificNumeric {
             return true;
         }
         return self == rhs;

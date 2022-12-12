@@ -1,6 +1,6 @@
 use std::collections::hash_map::Values;
 use std::collections::HashMap;
-use std::fmt::{Display, format, Formatter};
+use std::fmt::{Display, Formatter};
 use std::iter::zip;
 use crate::ast::{Node, Type};
 use crate::string_pool::PoolS;
@@ -17,6 +17,7 @@ pub struct FunID(u64);
 
 #[derive(Copy, Clone)]
 #[derive(Eq, Hash, PartialEq)]
+#[allow(unused)]
 pub enum Namespace {
     Global,
     StaticCall(PoolS),
@@ -162,6 +163,7 @@ impl Bindings {
         self.fun_map.get(&id).unwrap() // TODO: Determine if this unwrap is safe
     }
 
+    #[allow(unused)]
     pub fn get_fun_mut(&mut self, id: FunID) -> &mut FunBinding {
         self.fun_map.get_mut(&id).unwrap() // TODO: Determine if this unwrap is safe
     }

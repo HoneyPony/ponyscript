@@ -1,4 +1,3 @@
-use std::borrow::BorrowMut;
 use std::cell::{Cell, RefCell};
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
@@ -32,6 +31,7 @@ impl PoolS {
         }
     }
 
+    #[allow(unused)]
     pub fn to_vec(&self) -> Vec<u8> {
         // TODO: Figure out if this unwrap is correct?
         // It should work for any instance of PoolS that is actually returned by a pool.
@@ -69,6 +69,7 @@ impl StringPool {
         }
     }
 
+    #[allow(unused)]
     pub fn pool_str(&self, str: &'static str) -> PoolS {
         self.pool_ref(&str.as_bytes().to_vec())
     }
@@ -79,7 +80,7 @@ impl StringPool {
     ///
     /// Can be used to compare pooled strings without filling up the pool with unused values.
     pub fn pool_tmp_str(&self, str: &'static str) -> PoolS {
-        self.pool_ref(&str.as_bytes().to_vec())
+        self.pool_tmp(&str.as_bytes().to_vec())
     }
 
     pub fn pool_tmp(&self, str: &Vec<u8>) -> PoolS {
@@ -127,10 +128,12 @@ impl StringPool {
         PoolS { value: val, pool: self }
     }
 
+    #[allow(unused)]
     pub fn unpool_copy(&self, str: PoolS) -> Option<Vec<u8>> {
         self.int_to_str.borrow().get(&str.value).map(|val| val.clone())
     }
 
+    #[allow(unused)]
     pub fn unpool_to_utf8(&self, str: PoolS) -> String {
         self.int_to_str
             .borrow()

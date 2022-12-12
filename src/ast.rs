@@ -1,4 +1,4 @@
-use std::fmt::{Debug, Display, Formatter, Pointer};
+use std::fmt::{Debug, Display, Formatter};
 use std::io;
 use std::io::Write;
 use crate::string_pool::PoolS;
@@ -23,7 +23,7 @@ impl<Id> Display for BindPoint<Id> {
             BindPoint::Unbound(s) => {
                 f.write_fmt(format_args!("{}", s))
             },
-            BindPoint::BoundTo(i64) => {
+            BindPoint::BoundTo(_) => {
                 f.write_str("[todo]")
             }
         }
@@ -87,6 +87,8 @@ impl Declaration {
     }
 
     pub fn to_node(self) -> Node { return Node::Decl(self) }
+
+    #[allow(unused)]
     pub fn to_rnode(self) -> RNode {
         return Ok(self.to_node())
     }
@@ -107,6 +109,7 @@ impl NumConst {
     }
 }
 
+#[allow(unused)]
 pub enum Op {
     Add,
     Subtract,
@@ -147,7 +150,7 @@ impl Debug for Node {
                 }
                 f.write_str("]")?;
             }
-            Node::FunDecl(func) => {
+            Node::FunDecl(_) => {
                 f.write_fmt(format_args!("[func]"))?;
             }
             _ => { f.write_str("[unknown]")?; }
@@ -160,7 +163,7 @@ impl Node {
     pub fn get_expr_type(&self, bindings: &Bindings) -> Type {
         match &self {
             Node::Tree(_) => { Type::Error }
-            Node::FunDecl(fun) => {
+            Node::FunDecl(_) => {
                 Type::Error
             }
             Node::Decl(_) => { Type::Error }
@@ -170,13 +173,13 @@ impl Node {
             }
             Node::VarRef(point) => {
                 match point {
-                    BindPoint::Unbound(str) => Type::Error,
+                    BindPoint::Unbound(_) => Type::Error,
                     BindPoint::BoundTo(bind_id) => bindings.get_var(*bind_id).typ.clone()
                 }
             }
             Node::FunCall(_, point, _) => {
                 match point {
-                    BindPoint::Unbound(str) => Type::Error,
+                    BindPoint::Unbound(_) => Type::Error,
                     BindPoint::BoundTo(bind_id) => bindings.get_fun(*bind_id).return_type.clone()
                 }
             }

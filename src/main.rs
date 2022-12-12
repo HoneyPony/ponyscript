@@ -7,7 +7,7 @@ mod compiler;
 
 use std::collections::VecDeque;
 use std::env::args;
-use std::path::{Path, PathBuf};
+use std::path::{PathBuf};
 use crate::compiler::{Compiler, Output};
 
 struct Config {

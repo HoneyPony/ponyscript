@@ -39,20 +39,11 @@ pub struct Lexer<'a, R: Read> {
     may_match_blocks: bool
 }
 
-// fn is(byte: u8) -> fn(Option<u8>) -> bool {
-//     |c: Option<u8>| -> bool {
-//         match c {
-//             Some(other) => byte == other,
-//             None => false
-//         }
-//     }
-// }
-
 impl<'a> Lexer<'a, &[u8]> {
+    #[allow(unused)]
     pub fn from_str(pool: &'a StringPool, string: &'static str) -> Self {
         let reader = BufReader::new(string.as_bytes());
         Lexer::new(pool,String::from("[string]"), reader)
-        //Lexer { reader, string_pool: StringPool::new(), current: Some(b' '), block_level: 0, matched_block_level: 0, may_match_blocks: true }
     }
 }
 

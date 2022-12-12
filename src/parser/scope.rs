@@ -5,6 +5,8 @@ use crate::string_pool::PoolS;
 
 pub struct Scope {
     var_bindings: HashMap<PoolS, VarID>,
+
+    #[allow(unused)]
     fun_bindings: HashMap<PoolS, FunID>
 }
 
@@ -21,10 +23,12 @@ impl Scope {
         self.var_bindings.insert(name, id);
     }
 
+    #[allow(unused)]
     fn find_fun(&self, name: PoolS) -> Option<FunID> {
         self.fun_bindings.get(&name).map(|x| *x)
     }
 
+    #[allow(unused)]
     fn add_fun(&mut self, name: PoolS, id: FunID) {
         self.fun_bindings.insert(name, id);
     }

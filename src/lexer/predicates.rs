@@ -1,3 +1,4 @@
+#[allow(unused)]
 pub fn is_whitespace(byte: Option<u8>) -> bool {
     let byte = byte.unwrap_or(b'0');
     return byte == b' ' || byte == b'\n' || byte == b'\t' || byte == b'\r';

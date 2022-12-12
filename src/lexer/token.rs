@@ -1,4 +1,4 @@
-use std::fmt::{Debug, Formatter, Write};
+use std::fmt::{Debug, Formatter};
 use super::*;
 
 #[derive(PartialEq)]
@@ -36,9 +36,13 @@ impl Token {
         !self.is_eof() && !self.is_bad()
     }
 
+    #[allow(unused)]
     pub fn is_block_start(&self) -> bool { self == &BlockStart }
+
+    #[allow(unused)]
     pub fn is_block_end(&self) -> bool { self == &BlockEnd }
 
+    #[allow(unused)]
     pub fn is_id_str(&self, string: &'static str) -> bool {
         if let ID(str) = self {
             str.eq_utf8(string)
@@ -46,6 +50,7 @@ impl Token {
         else { false }
     }
 
+    #[allow(unused)]
     pub fn is_num_str(&self, string: &'static str) -> bool {
         if let Num(str) = self {
             str.eq_utf8(string)
@@ -53,6 +58,7 @@ impl Token {
         else { false }
     }
 
+    #[allow(unused)]
     pub fn is_lit_str(&self, string: &'static str) -> bool {
         self == &StringLiteral(string.as_bytes().to_vec())
     }
@@ -118,11 +124,6 @@ pub fn id(pool: &StringPool, bytes: Vec<u8>) -> Token {
     ID(id)
 }
 
-pub fn id_str(pool: &StringPool, string: &'static str) -> Token {
-    let id = pool.pool_str(string);
-    ID(id)
-}
-
 pub fn id_or_key(pool: &StringPool, bytes: Vec<u8>) -> Token {
     if bytes.is_empty() {
         return id(pool, bytes);
@@ -161,10 +162,6 @@ pub fn id_or_key(pool: &StringPool, bytes: Vec<u8>) -> Token {
 
 pub fn lit(bytes: Vec<u8>) -> Token {
     StringLiteral(bytes)
-}
-
-pub fn lit_str(string: &'static str) -> Token {
-    StringLiteral(string.as_bytes().to_vec())
 }
 
 pub fn num(pool: &StringPool, bytes: Vec<u8>) -> Token {

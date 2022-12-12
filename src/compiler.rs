@@ -1,6 +1,6 @@
 use std::fs::File;
 use std::io::{BufReader, Write};
-use std::path::{Path, PathBuf};
+use std::path::{PathBuf};
 use std::process::{Command, Stdio};
 use crate::ast::{codegen, Node, typecheck};
 use crate::bindings::Bindings;
@@ -65,7 +65,7 @@ impl Compiler {
     pub fn parse_source_file(&mut self, path: &PathBuf) -> Result<(), String> {
         let file = File::open(&path).map_err(|error| error.to_string())?;
 
-        let mut lexer = Lexer::new(&self.pool,
+        let lexer = Lexer::new(&self.pool,
                                    path.to_string_lossy().to_string(),
                                    BufReader::new(file));
         let mut parser = Parser::new(lexer, &mut self.bindings);
