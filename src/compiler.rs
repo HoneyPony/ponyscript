@@ -1,6 +1,7 @@
 use std::fs::File;
 use std::io::{BufReader, Write};
 use std::path::{Path, PathBuf};
+use std::process::{Command, Stdio};
 use crate::ast::{codegen, Node, typecheck};
 use crate::bindings::Bindings;
 use crate::lexer::Lexer;
@@ -20,7 +21,21 @@ impl Output {
                 compiler.codegen_impl(out)?;
             }
             Output::TccLib(lib_file) => {
-                unimplemented!()
+
+                let mut child = Command::new("tcc")
+                    .stdin(Stdio::piped())
+                    .arg("-shared")
+                    .arg("-o")
+                    .arg(lib_file)
+                    .arg("-")
+                    .spawn()?;
+
+                let mut stdin = child.stdin.take().expect("Failed to attach to tcc");
+                compiler.codegen_impl(&mut stdin)?;
+                drop(stdin);
+
+                let ecode = child.wait()?;
+                println!("error code = {}", ecode);
             }
         }
 
@@ -37,17 +52,17 @@ pub struct Compiler {
 }
 
 impl Compiler {
-    pub fn new() -> Self {
+    pub fn new(output: Output) -> Self {
         Compiler {
             pool: StringPool::new(),
             bindings: Bindings::new(),
             trees: vec![],
 
-            output: Output::Stdout
+            output
         }
     }
 
-    pub fn parse_source_file(&mut self, path: PathBuf) -> Result<(), String> {
+    pub fn parse_source_file(&mut self, path: &PathBuf) -> Result<(), String> {
         let file = File::open(&path).map_err(|error| error.to_string())?;
 
         let mut lexer = Lexer::new(&self.pool,
