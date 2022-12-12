@@ -5,7 +5,7 @@ mod prelude;
 
 pub use prelude::write_prelude;
 
-pub fn codegen<W: Write>(bindings: &mut Bindings, node: &Node, writer: &mut W) -> io::Result<()> {
+pub fn codegen<W: Write>(bindings: &Bindings, node: &Node, writer: &mut W) -> io::Result<()> {
     match node {
         Node::FunDecl(f) => {
             let fun = bindings.get_fun(f.bind_id);
@@ -91,7 +91,7 @@ pub fn codegen<W: Write>(bindings: &mut Bindings, node: &Node, writer: &mut W) -
     Ok(())
 }
 
-fn codegen_op<W: Write>(bindings: &mut Bindings, op: &Op, lhs: &Box<Node>, rhs: &Box<Node>, writer: &mut W) -> io::Result<()> {
+fn codegen_op<W: Write>(bindings: &Bindings, op: &Op, lhs: &Box<Node>, rhs: &Box<Node>, writer: &mut W) -> io::Result<()> {
     // Write the operator function name. This could even allow user-defined operators...
     writer.write_fmt(format_args!("{}_op_{}(", lhs.get_expr_type(bindings), op.impl_str()))?;
 

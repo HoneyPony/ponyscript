@@ -3,49 +3,31 @@ mod string_pool;
 mod parser;
 mod ast;
 mod bindings;
+mod compiler;
 
-use std::fs::File;
-use std::io;
-use std::io::{BufReader, stdout};
-use crate::bindings::Bindings;
-use crate::lexer::Lexer;
-use crate::parser::Parser;
-use crate::string_pool::StringPool;
+use std::path::{Path, PathBuf};
+use crate::compiler::Compiler;
 
 fn main() {
-  /*  let string =
-"fun test() -> float:
-\tlet x : int
-\tlet y : int
-\tlet z : Set[int, +Node]";
+    let mut compiler = Compiler::new();
 
-    let mut parser = Parser::from_str(string);
-    let tree = parser.parse();
+    let source_paths = vec!["examples/test.pony.script"];
 
-    dbg!(&tree);
+    let parse_errors: Vec<String> = source_paths.iter().map(|path| {
+        compiler.parse_source_file(PathBuf::from(path))
+    }).filter(|result| result.is_err()).map(|error| error.unwrap_err()).collect();
 
-    if let Ok(tree) = tree {
-        ast::codegen(&tree, &mut stdout()).expect("Failed to write");
-    }*/
-    let file = File::open("examples/test.pony.script").unwrap();
-    let mut pool = StringPool::new();
-    let mut lexer = Lexer::new(&pool,String::from("examples/test.pony.script"), BufReader::new(file));
-    let mut bindings = Bindings::new();
-    let mut debug = Parser::new(lexer, &mut bindings);
-
-    let tree = debug.parse();
-
-    dbg!(&tree);
-
-    if let Ok(mut tree) = tree {
-        if let Err(e) = ast::typecheck(&mut bindings, &mut tree) {
-            println!("Typecheck error: {}", e);
+    if !parse_errors.is_empty() {
+        for error in parse_errors {
+            println!("{}", error);
         }
-
-        let output = &mut stdout();
-
-        ast::codegen::write_prelude(output).and_then(|result|
-            ast::codegen(&mut bindings,&tree, output)
-        ).expect("Could not codegen to stdout");
+        return;
     }
+
+    if let Err(type_err) = compiler.typecheck() {
+        println!("Typecheck error: {}", type_err);
+        return;
+    }
+
+    compiler.output().expect("Failed to output code!");
 }
