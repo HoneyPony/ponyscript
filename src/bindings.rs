@@ -1,5 +1,6 @@
 use std::collections::hash_map::Values;
 use std::collections::HashMap;
+use std::fmt::{Display, format, Formatter};
 use std::iter::zip;
 use crate::ast::{Node, Type};
 use crate::string_pool::PoolS;
@@ -13,6 +14,24 @@ pub struct VarID(u64);
 #[derive(Copy, Clone)]
 #[derive(Eq, Hash, PartialEq)]
 pub struct FunID(u64);
+
+#[derive(Copy, Clone)]
+#[derive(Eq, Hash, PartialEq)]
+pub enum Namespace {
+    Global,
+    StaticCall(PoolS),
+    DynamicCall(PoolS)
+}
+
+impl Display for Namespace {
+    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
+        match self {
+            Namespace::Global => f.write_str("g_"),
+            Namespace::StaticCall(typ) => f.write_fmt(format_args!("s{}_", typ)),
+            Namespace::DynamicCall(typ) => f.write_fmt(format_args!("d{}_", typ))
+        }
+    }
+}
 
 pub struct VarBinding {
     pub output_name: String,
@@ -41,7 +60,7 @@ pub struct Bindings {
     next: u64,
     var_map: HashMap<VarID, VarBinding>,
     fun_map: HashMap<FunID, FunBinding>,
-    reverse_fun_map: HashMap<PoolS, Vec<(FunID, Vec<VarID>)>>,
+    reverse_fun_map: HashMap<(Namespace, PoolS), Vec<(FunID, Vec<VarID>)>>,
     names: HashMap<PoolS, u64>
 }
 
@@ -80,8 +99,8 @@ impl Bindings {
         self.var_map.get_mut(&id).unwrap() // TODO: Determine if this unwrap is safe
     }
 
-    pub fn new_fun_binding(&mut self, name: PoolS, return_type: Type, args: Vec<VarID>) -> Result<FunID, String> {
-        let existing = self.find_fun_from_vars(name, &args);
+    pub fn new_fun_binding(&mut self, namespace: Namespace, name: PoolS, return_type: Type, args: Vec<VarID>) -> Result<FunID, String> {
+        let existing = self.find_fun_from_vars(namespace, name, &args);
 
         if existing.is_some() {
             return Err(format!("function {} already defined with these arguments", name));
@@ -89,7 +108,7 @@ impl Bindings {
 
         // TODO: Possibly support functions with different arguments. Actually, we probably
         // definitely want to do that...
-        let mut output_name = format!("{}_", name);
+        let mut output_name = format!("{}{}_", namespace, name);
         for arg in &args {
             let typ = &self.get_var(*arg).typ;
             output_name += &typ.to_string();
@@ -98,7 +117,7 @@ impl Bindings {
 
         let id = FunID(self.grab_id());
 
-        let list = self.reverse_fun_map.entry(name).or_insert(vec![]);
+        let list = self.reverse_fun_map.entry((namespace, name)).or_insert(vec![]);
         list.push((id, args.clone()));
 
         self.fun_map.insert(id, FunBinding::new(output_name, return_type, args));
@@ -106,8 +125,8 @@ impl Bindings {
         Ok(id)
     }
 
-    pub fn find_fun_from_vars(&self, name: PoolS, args: &Vec<VarID>) -> Option<FunID> {
-        let options = self.reverse_fun_map.get(&name)?;
+    pub fn find_fun_from_vars(&self, namespace: Namespace, name: PoolS, args: &Vec<VarID>) -> Option<FunID> {
+        let options = self.reverse_fun_map.get(&(namespace, name))?;
 
         for option in options {
             if &option.1 == args {
@@ -118,8 +137,8 @@ impl Bindings {
         None
     }
 
-    pub fn find_fun_from_compat_nodes(&self, name: PoolS, args: &Vec<Node>) -> Option<FunID> {
-        let options = self.reverse_fun_map.get(&name)?;
+    pub fn find_fun_from_compat_nodes(&self, namespace: Namespace, name: PoolS, args: &Vec<Node>) -> Option<FunID> {
+        let options = self.reverse_fun_map.get(&(namespace, name))?;
 
         for option in options {
             if option.1.len() != args.len() { continue; }

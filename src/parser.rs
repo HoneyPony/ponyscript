@@ -2,7 +2,7 @@ use std::io::{Read};
 use crate::ast;
 use crate::ast::{BindPoint, FunDecl, Node, Op, Type};
 use crate::ast::Node::{Empty};
-use crate::bindings::{Bindings, FunID, VarID};
+use crate::bindings::{Bindings, FunID, Namespace, VarID};
 
 use crate::lexer::{Lexer, Token};
 use crate::string_pool::{PoolS, StringPool};
@@ -266,7 +266,7 @@ impl<'a, R: Read> Parser<'a, R> {
         self.eat_or_err(Token::Colon,"Expected ':' after function")?;
         self.eat_or_err(Token::BlockStart,"Expected block after function")?;
 
-        let func_id = self.bindings.new_fun_binding(id, return_type, args)?;
+        let func_id = self.bindings.new_fun_binding(Namespace::Global, id, return_type, args)?;
         let mut func = FunDecl::new(func_id);
 
         while !self.eat(Token::BlockEnd) {

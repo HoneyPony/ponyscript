@@ -1,5 +1,5 @@
 use crate::ast::{BindPoint, Node, Type};
-use crate::bindings::{Bindings, FunID, VarID};
+use crate::bindings::{Bindings, FunID, Namespace, VarID};
 
 fn wrap_option(typ: &Type) -> Type {
     match typ {
@@ -155,7 +155,7 @@ pub fn typecheck<'a>(bindings: &mut Bindings, node: &mut Node) -> Result<Type, S
             match point {
                 BindPoint::Unbound(name) => {
                     let binding = bindings
-                        .find_fun_from_compat_nodes(*name, args)
+                        .find_fun_from_compat_nodes(Namespace::Global,*name, args)
                         .ok_or(format!("In call to {}, could not find matching arg list", name))?;
 
                     point.bind_to(binding);
