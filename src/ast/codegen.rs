@@ -1,29 +1,41 @@
-use crate::bindings::Bindings;
+use crate::bindings::{Bindings, FunBinding};
 use super::*;
 
 mod prelude;
+mod forward;
 
 pub use prelude::write_prelude;
+pub use forward::write_forward_declarations;
+
+/// Writes all parts of the function declaration, including the return type, parameter types, and
+/// parameter names, as well as the closing parenthesis. Does not write a brace or a semicolon,
+/// however.
+fn codegen_fun_decl<W: Write>(bindings: &Bindings, fun: &FunBinding, writer: &mut W) -> io::Result<()> {
+    writer.write_fmt(format_args!("{} {}(", fun.return_type, fun.output_name))?;
+
+    let mut generate_comma = false;
+    for param in &fun.args {
+        if generate_comma {
+            writer.write(b", ")?;
+        }
+
+        let binding = bindings.get_var(*param);
+        writer.write_fmt(format_args!("{} {}", binding.typ, binding.output_name))?;
+
+        generate_comma = true;
+    }
+    writer.write(b")")?;
+
+    Ok(())
+}
 
 pub fn codegen<W: Write>(bindings: &Bindings, node: &Node, writer: &mut W) -> io::Result<()> {
     match node {
         Node::FunDecl(f) => {
             let fun = bindings.get_fun(f.bind_id);
-            writer.write_fmt(format_args!("{} {}(", fun.return_type, fun.output_name))?;
+            codegen_fun_decl(bindings, fun, writer)?;
 
-            let mut generate_comma = false;
-            for param in &fun.args {
-                if generate_comma {
-                    writer.write(b", ")?;
-                }
-
-                let binding = bindings.get_var(*param);
-                writer.write_fmt(format_args!("{} {}", binding.typ, binding.output_name))?;
-
-                generate_comma = true;
-            }
-
-            writer.write(b") {\n")?;
+            writer.write(b" {\n")?;
 
             for s in &f.body {
                 codegen(bindings,s, writer)?;

@@ -1,3 +1,4 @@
+use std::collections::hash_map::Values;
 use std::collections::HashMap;
 use std::iter::zip;
 use crate::ast::{Node, Type};
@@ -144,6 +145,10 @@ impl Bindings {
 
     pub fn get_fun_mut(&mut self, id: FunID) -> &mut FunBinding {
         self.fun_map.get_mut(&id).unwrap() // TODO: Determine if this unwrap is safe
+    }
+
+    pub fn fun_bindings(&self) -> Values<'_, FunID, FunBinding> {
+        self.fun_map.values()
     }
 
 }

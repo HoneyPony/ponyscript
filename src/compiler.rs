@@ -78,6 +78,7 @@ impl Compiler {
     /// by Output with the correct writer.
     fn codegen_impl<W: Write>(&self, writer: &mut W) -> std::io::Result<()> {
         codegen::write_prelude(writer)?;
+        codegen::write_forward_declarations(&self.bindings, writer)?;
 
         for tree in self.trees.iter() {
             codegen::codegen(&self.bindings, tree, writer)?;
