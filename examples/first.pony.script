@@ -1,0 +1,5 @@
+# This first file defines a function that calls a different function from
+# the second file!
+
+fun first():
+	second(3)

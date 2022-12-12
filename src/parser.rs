@@ -170,14 +170,18 @@ impl<'a, R: Read> Parser<'a, R> {
         let id = self.eat_id_or_err("Failed to consume identifier when parsing identifier")?;
         if self.eat(Token::LParen) {
             let mut args = vec![];
-            loop {
-                args.push(self.parse_expr()?);
 
-                if !self.eat(Token::Comma) {
-                    if self.eat(Token::RParen) {
-                        break;
+            if !self.eat(Token::RParen) {
+                // Only look for arguments if there isn't an immediate right parenthesis
+                loop {
+                    args.push(self.parse_expr()?);
+
+                    if !self.eat(Token::Comma) {
+                        if self.eat(Token::RParen) {
+                            break;
+                        }
+                        return self.err("Expected ')' or ',' in function call");
                     }
-                    return self.err("Expected ')' or ',' in function call");
                 }
             }
             // We can't actually bind to a specific function call yet, even if we have seen it...

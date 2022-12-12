@@ -11,7 +11,7 @@ use crate::compiler::Compiler;
 fn main() {
     let mut compiler = Compiler::new();
 
-    let source_paths = vec!["examples/test.pony.script"];
+    let source_paths = vec!["examples/first.pony.script", "examples/second.pony.script"];
 
     let parse_errors: Vec<String> = source_paths.iter().map(|path| {
         compiler.parse_source_file(PathBuf::from(path))
