@@ -1,11 +1,14 @@
 use std::collections::HashMap;
-use crate::ast::Type;
+use std::iter::zip;
+use crate::ast::{Node, Type};
 use crate::string_pool::PoolS;
 
+#[derive(Debug)]
 #[derive(Copy, Clone)]
 #[derive(Eq, Hash, PartialEq)]
 pub struct VarID(u64);
 
+#[derive(Debug)]
 #[derive(Copy, Clone)]
 #[derive(Eq, Hash, PartialEq)]
 pub struct FunID(u64);
@@ -108,6 +111,27 @@ impl Bindings {
         for option in options {
             if &option.1 == args {
                 return Some(option.0)
+            }
+        }
+
+        None
+    }
+
+    pub fn find_fun_from_compat_nodes(&self, name: PoolS, args: &Vec<Node>) -> Option<FunID> {
+        let options = self.reverse_fun_map.get(&name)?;
+
+        for option in options {
+            if option.1.len() != args.len() { continue; }
+
+            let matches_all = zip(&option.1, args).map(|pair| {
+                let left = &self.get_var(*pair.0).typ;
+                let right = &pair.1.get_expr_type(self);
+
+                left.eq_or_may_coerce(right)
+            }).filter(|entry| *entry == false).count() == 0;
+
+            if matches_all {
+                return Some(option.0);
             }
         }
 

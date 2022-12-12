@@ -1,6 +1,7 @@
 use std::fmt::{Display, Formatter};
 
 use std::io::Write;
+use crate::ast::Type::UnspecificNumeric;
 use crate::string_pool::PoolS;
 
 #[derive(Clone)]
@@ -44,6 +45,13 @@ impl Type {
             Type::Int32 => true,
             _ => false
         }
+    }
+
+    pub fn eq_or_may_coerce(&self, rhs: &Type) -> bool {
+        if self.is_specific_numeric() {
+            return rhs.is_specific_numeric() || rhs == &UnspecificNumeric;
+        }
+        return self == rhs;
     }
 }
 

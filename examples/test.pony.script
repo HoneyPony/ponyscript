@@ -41,11 +41,15 @@ fun test():
 
 	test1 = 10 + 20
 
-fun some(list: Array[int]):
+fun some(blah: float):
 	let x = 5
 
-fun some(list: Array[float]):
-	let x = 5
+fun some(blah: int):
+	let x = 7
 
 fun tick(delta: float):
-	let x = 5
+	let first: int = 10
+	let second: float = 20
+
+	some(10)
+	some(20)

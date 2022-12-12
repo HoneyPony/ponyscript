@@ -1,5 +1,5 @@
 use crate::ast::{BindPoint, Node, Type};
-use crate::bindings::{Bindings, VarID};
+use crate::bindings::{Bindings, FunID, VarID};
 
 fn wrap_option(typ: &Type) -> Type {
     match typ {
@@ -138,7 +138,25 @@ pub fn typecheck<'a>(bindings: &mut Bindings, node: &mut Node) -> Result<Type, S
             }
             return Err(String::from("Could not match types in binary expression"));
         }
-        Node::FunCall(_, _) => {}
+        Node::FunCall(wrapped, args) => {
+            for arg in args.iter_mut() {
+                typecheck(bindings, arg)?;
+            }
+            match wrapped.point {
+                BindPoint::Unbound(name) => {
+                    let binding = bindings
+                        .find_fun_from_compat_nodes(name, args)
+                        .ok_or(format!("In call to {}, could not find matching arg list", name))?;
+
+                    wrapped.bind_to(binding);
+
+                    return Ok(bindings.get_fun(binding).return_type.clone());
+                }
+                BindPoint::BoundTo(id) => {
+                    return Ok(bindings.get_fun(id).return_type.clone());
+                }
+            }
+        }
         Node::Empty => {}
     }
     return Ok(Type::Error);
