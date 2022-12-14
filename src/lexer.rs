@@ -164,7 +164,7 @@ impl<'a, R: Read> Lexer<'a, R> {
         }
 
         if let Some(mut id) = self.match_to_vec(is_alpha) {
-            self.match_onto_vec(&mut id, is_alphanum);
+            self.match_onto_vec(&mut id, is_id_char);
 
             return token::id_or_key(&self.string_pool, id);
         }

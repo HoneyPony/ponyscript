@@ -1,0 +1,7 @@
+extends Node as NameCol
+
+fun function(param: float):
+	let x = 5
+
+fun function_float():
+	let x = 5

@@ -32,3 +32,12 @@ pub fn is_alphanum(byte: Option<u8>) -> bool {
 
     return lower || upper || num;
 }
+
+pub fn is_id_char(byte: Option<u8>) -> bool {
+    match byte {
+        None => false,
+        Some(inner) => {
+            return is_alphanum(byte) || inner == b'_';
+        }
+    }
+}
