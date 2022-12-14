@@ -5,3 +5,6 @@ fun function(param: float):
 
 fun function_float():
 	let x = 5
+
+fun function_float_args():
+	# empty # todo: add pass statement, seems useful.

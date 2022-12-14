@@ -109,11 +109,11 @@ impl Bindings {
 
         // TODO: Possibly support functions with different arguments. Actually, we probably
         // definitely want to do that...
-        let mut output_name = format!("{}{}_", namespace, name);
+        let mut output_name = format!("{}{}_args", namespace, name);
         for arg in &args {
             let typ = &self.get_var(*arg).typ;
-            output_name += &typ.to_string();
             output_name.push('_');
+            output_name += &typ.to_string();
         }
 
         let id = FunID(self.grab_id());
