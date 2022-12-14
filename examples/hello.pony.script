@@ -141,3 +141,46 @@ fun shoot-bullet():
 fun shoot_bullet():
 	var b = Bullet.instance()
 	get_parent()?.add_child(b)
+
+# Idea for string blocks...
+# Occasionally you need really long, formatted strings, which I can foresee
+# potentially being needed in PonyScript as well.
+#
+# I think the best way to do them is: prefix every line of the string block.
+# So, perhaps something like:
+
+"Hello
+"This is a block
+
+# One problem: "quotes" like to automatically complete to double-quotes in
+# IDE's; this can be fixed, but it is annoying nonetheless, and also it is
+# somewhat unintuitive for the very same reason: double quotes usually go on
+# both sides.
+#
+# I'm thinking, something like....
+|"""
+|String block here
+|	This is a preformatted block of text!
+|	Look at how clear it is what the formatting is!
+|Wow, aren't prefixes nice for this!
+|"""
+
+# Basically, have the prefix be whatever character seems most convenient, and
+# then have an additional two lines for the start and end, maybe?
+
+fun update_text():
+	var text = """
+	|Hello, this is my new block of text
+	|You can see that it is clear where the formatting is, even though
+	|The block is indented.
+	"""
+
+# That's kind of nice. Maybe something like...
+
+fun update_text():
+	var text = """
+		|Hello, this is my new block of text
+		|You can see that it is clear where the formatting is, even though
+		|The block is indented.
+
+	# More code...
