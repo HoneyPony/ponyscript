@@ -63,18 +63,6 @@ impl FunBinding {
     }
 }
 
-/// Type bindings are distinct from other kinds of bindings in that there is no need
-/// to ever have an unresolved reference to a TypeID; as such, BindPoints are not
-/// necessary.
-///
-/// In particular, the type syntax is global in the sense that any reference to a
-/// given type will always be referencing the same global object. IF we ever introduce
-/// local types this will have to change (although, it is possible that we would still
-/// want to think of types as a global phenomenon. In fact, we may want to change
-/// the other bindings to work the same way...)
-///
-/// That said, there does need to be a sense in which a type itself is either
-/// resolved or not. Perhaps we should use BindPoints for that? Not sure.
 pub struct TypeBinding {
     pub associated_type: Type,
     pub output_name: String
