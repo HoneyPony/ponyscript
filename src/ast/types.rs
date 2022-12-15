@@ -3,7 +3,7 @@ use std::fmt::{Display, Formatter};
 use crate::string_pool::PoolS;
 
 #[derive(Clone)]
-#[derive(PartialEq)]
+#[derive(Hash, Eq, PartialEq)]
 pub enum Type {
     Primitive(PoolS),
     Optional(Box<Type>),

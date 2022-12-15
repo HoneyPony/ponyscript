@@ -15,6 +15,11 @@ pub struct VarID(u64);
 #[derive(Eq, Hash, PartialEq)]
 pub struct FunID(u64);
 
+#[derive(Debug)]
+#[derive(Copy, Clone)]
+#[derive(Eq, Hash, PartialEq)]
+pub struct TypeID(u64);
+
 #[derive(Copy, Clone)]
 #[derive(Eq, Hash, PartialEq)]
 #[allow(unused)]
@@ -48,13 +53,31 @@ impl VarBinding {
 pub struct FunBinding {
     pub output_name: String,
     pub return_type: Type,
-    pub args: Vec<VarID>
+    pub args: Vec<VarID>,
+    pub called_on: Option<TypeID>
 }
 
 impl FunBinding {
     pub fn new(output_name: String, return_type: Type, args: Vec<VarID>) -> Self {
-        FunBinding { output_name, return_type, args }
+        FunBinding { output_name, return_type, args, called_on: None }
     }
+}
+
+/// Type bindings are distinct from other kinds of bindings in that there is no need
+/// to ever have an unresolved reference to a TypeID; as such, BindPoints are not
+/// necessary.
+///
+/// In particular, the type syntax is global in the sense that any reference to a
+/// given type will always be referencing the same global object. IF we ever introduce
+/// local types this will have to change (although, it is possible that we would still
+/// want to think of types as a global phenomenon. In fact, we may want to change
+/// the other bindings to work the same way...)
+///
+/// That said, there does need to be a sense in which a type itself is either
+/// resolved or not. Perhaps we should use BindPoints for that? Not sure.
+pub struct TypeBinding {
+    pub associated_type: Type,
+    pub output_name: String
 }
 
 pub struct Bindings {
@@ -62,6 +85,8 @@ pub struct Bindings {
     var_map: HashMap<VarID, VarBinding>,
     fun_map: HashMap<FunID, FunBinding>,
     reverse_fun_map: HashMap<(Namespace, PoolS), Vec<(FunID, Vec<VarID>)>>,
+    type_map: HashMap<TypeID, TypeBinding>,
+    type_id_map: HashMap<Type, TypeID>,
     names: HashMap<PoolS, u64>
 }
 
@@ -72,6 +97,8 @@ impl Bindings {
             var_map: HashMap::new(),
             fun_map: HashMap::new(),
             reverse_fun_map: HashMap::new(),
+            type_map: HashMap::new(),
+            type_id_map: HashMap::new(),
             names: HashMap::new()
         }
     }
@@ -98,6 +125,30 @@ impl Bindings {
 
     pub fn get_var_mut(&mut self, id: VarID) -> &mut VarBinding {
         self.var_map.get_mut(&id).unwrap() // TODO: Determine if this unwrap is safe
+    }
+
+    fn initialize_type(&mut self, id: TypeID, associated: Type) {
+        let output_name = format!("{}", associated);
+
+        let binding = TypeBinding {
+            associated_type: associated,
+            output_name
+        };
+
+        self.type_map.insert(id, binding);
+    }
+
+    pub fn find_type_id(&mut self, typ: &Type) -> TypeID {
+        let existing = self.type_id_map.get(&typ);
+        if let Some(id) = existing {
+            return *id;
+        }
+
+        let new = TypeID(self.grab_id());
+        self.type_id_map.insert(typ.clone(), new);
+        self.initialize_type(new, typ.clone());
+
+        new
     }
 
     pub fn new_fun_binding(&mut self, namespace: Namespace, name: PoolS, return_type: Type, args: Vec<VarID>) -> Result<FunID, String> {
