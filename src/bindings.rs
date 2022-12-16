@@ -2,8 +2,12 @@ use std::collections::hash_map::Values;
 use std::collections::HashMap;
 use std::fmt::{Display, Formatter};
 use std::iter::zip;
-use crate::ast::{Node, Type};
+use crate::ast::{GetExprType, Node, Type};
 use crate::string_pool::PoolS;
+
+pub trait GetID<T> {
+    fn get_id(&self) -> Option<T>;
+}
 
 #[derive(Debug)]
 #[derive(Copy, Clone)]
@@ -19,6 +23,24 @@ pub struct FunID(u64);
 #[derive(Copy, Clone)]
 #[derive(Eq, Hash, PartialEq)]
 pub struct TypeID(u64);
+
+impl GetID<Self> for VarID {
+    fn get_id(&self) -> Option<Self> {
+        Some(*self)
+    }
+}
+
+impl GetID<Self> for FunID {
+    fn get_id(&self) -> Option<Self> {
+        Some(*self)
+    }
+}
+
+impl GetID<Self> for TypeID {
+    fn get_id(&self) -> Option<Self> {
+        Some(*self)
+    }
+}
 
 #[derive(Copy, Clone)]
 #[derive(Eq, Hash, PartialEq)]
@@ -177,7 +199,7 @@ impl Bindings {
         None
     }
 
-    pub fn find_fun_from_compat_nodes(&self, namespace: Namespace, name: PoolS, args: &Vec<Node>) -> Option<FunID> {
+    pub fn find_fun_from_compat_nodes<Node : GetExprType>(&self, namespace: Namespace, name: PoolS, args: &Vec<Node>) -> Option<FunID> {
         let options = self.reverse_fun_map.get(&(namespace, name))?;
 
         for option in options {

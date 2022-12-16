@@ -10,11 +10,20 @@ pub mod op;
 pub use types::Type;
 pub use codegen::codegen;
 pub use typecheck::typecheck;
-use crate::bindings::{Bindings, FunID, Namespace, VarID};
+use crate::bindings::{Bindings, FunID, GetID, Namespace, TypeID, VarID};
 
 pub enum BindPoint<Id> {
     Unbound(PoolS),
     BoundTo(Id)
+}
+
+impl<Id : Copy> GetID<Id> for BindPoint<Id> {
+    fn get_id(&self) -> Option<Id> {
+        match &self {
+            BindPoint::Unbound(_) => None,
+            BindPoint::BoundTo(id) => Some(*id)
+        }
+    }
 }
 
 impl<Id> Display for BindPoint<Id> {
@@ -41,72 +50,10 @@ impl<Id> BindPoint<Id> {
     }
 }
 
-pub struct Tree {
+pub struct Tree<Node> {
     pub base_type: PoolS,
     pub own_type: PoolS,
     pub children: Vec<Node>
-}
-
-pub struct FunDecl {
-    pub bind_id: FunID,
-    pub body: Vec<Node>
-}
-
-impl FunDecl {
-    pub fn new(bind_id: FunID) -> Self {
-        FunDecl {
-            bind_id,
-            body: vec![]
-        }
-    }
-
-    pub fn to_node(self) -> Node {
-        return Node::FunDecl(self)
-    }
-
-    pub fn to_rnode(self) -> RNode {
-        return Ok(self.to_node())
-    }
-}
-
-pub struct Declaration {
-    pub bind_id: VarID,
-    pub expr: Option<Box<Node>>
-}
-
-impl Declaration {
-    pub fn new(bind_id: VarID) -> Self {
-        Self::new_expr(bind_id, None)
-    }
-
-    pub fn new_expr(bind_id: VarID, expr: Option<Box<Node>>) -> Self {
-        Declaration {
-            bind_id,
-            expr
-        }
-    }
-
-    pub fn to_node(self) -> Node { return Node::Decl(self) }
-
-    #[allow(unused)]
-    pub fn to_rnode(self) -> RNode {
-        return Ok(self.to_node())
-    }
-}
-
-pub struct NumConst {
-    pub value_str: PoolS,
-    pub typ: Type
-}
-
-impl NumConst {
-    pub fn new(value_str: PoolS, typ: Type) -> Self {
-        NumConst { value_str, typ }
-    }
-
-    pub fn to_node(self) -> Node {
-        Node::NumConst(self)
-    }
 }
 
 #[allow(unused)]
@@ -128,67 +75,53 @@ impl Op {
     }
 }
 
-pub enum Node {
-    Tree(Tree),
-    FunDecl(FunDecl),
-    Decl(Declaration),
-    Assign(BindPoint<VarID>, Box<Node>),
-    VarRef(BindPoint<VarID>),
-    NumConst(NumConst),
-    FunCall(Namespace, BindPoint<FunID>, Vec<Node>),
-    BinOp(Op, Box<Node>, Box<Node>),
+pub trait GetExprType {
+    fn get_expr_type(&self, bindings: &Bindings) -> Type;
+}
+
+pub enum Node<VarBind : GetID<VarID>, FunBind : GetID<FunID>, TyBind : GetID<TypeID>> {
+    Tree(Tree<Self>),
+    FunDecl(FunID, Vec<Self>),
+    Decl(VarID, Option<Box<Self>>),
+    Assign(VarBind, Box<Self>),
+    VarRef(VarBind),
+    NumConst(PoolS, Type),
+    FunCall(Namespace, FunBind, Vec<Self>),
+    BinOp(Op, Box<Self>, Box<Self>),
+    TyBindUnused(TyBind),
     Empty
 }
 
-impl Debug for Node {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        match self {
-            Node::Tree(tree) => {
-                f.write_str("[tree ")?;
-                for node in &tree.children {
-                    node.fmt(f)?;
-                }
-                f.write_str("]")?;
-            }
-            Node::FunDecl(_) => {
-                f.write_fmt(format_args!("[func]"))?;
-            }
-            _ => { f.write_str("[unknown]")?; }
-        }
-        Ok(())
-    }
-}
-
-impl Node {
-    pub fn get_expr_type(&self, bindings: &Bindings) -> Type {
+impl<V : GetID<VarID>, F : GetID<FunID>, T : GetID<TypeID>> GetExprType for Node<V, F, T> {
+    fn get_expr_type(&self, bindings: &Bindings) -> Type {
         match &self {
-            Node::Tree(_) => { Type::Error }
-            Node::FunDecl(_) => {
-                Type::Error
-            }
-            Node::Decl(_) => { Type::Error }
-            Node::Assign(_, _) => { Type::Error }
-            Node::NumConst(num) => {
-                num.typ.clone()
+            Node::NumConst(_, typ) => {
+                typ.clone()
             }
             Node::VarRef(point) => {
-                match point {
-                    BindPoint::Unbound(_) => Type::Error,
-                    BindPoint::BoundTo(bind_id) => bindings.get_var(*bind_id).typ.clone()
-                }
+                point.get_id().map_or(Type::Error, |id| bindings.get_var(id).typ.clone())
             }
             Node::FunCall(_, point, _) => {
-                match point {
-                    BindPoint::Unbound(_) => Type::Error,
-                    BindPoint::BoundTo(bind_id) => bindings.get_fun(*bind_id).return_type.clone()
-                }
+                point.get_id().map_or(Type::Error, |id| bindings.get_fun(id).return_type.clone())
             }
             Node::BinOp(_, lhs, _) => {
                 lhs.get_expr_type(bindings)
             }
-            Node::Empty => { Type::Error }
+            _ => Type::Error
         }
     }
 }
 
-pub type RNode = Result<Node, String>;
+pub type UntypedNode = Node<
+    BindPoint<VarID>,
+    BindPoint<FunID>,
+    BindPoint<TypeID>
+>;
+
+pub type TypedNode = Node<
+    VarID,
+    FunID,
+    TypeID
+>;
+
+pub type RNode = Result<UntypedNode, String>;

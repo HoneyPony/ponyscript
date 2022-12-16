@@ -2,7 +2,7 @@ use std::fs::File;
 use std::io::{BufReader, Write};
 use std::path::{PathBuf};
 use std::process::{Command, Stdio};
-use crate::ast::{codegen, Node, typecheck};
+use crate::ast::{codegen, Node, Type, typecheck, TypedNode, UntypedNode};
 use crate::bindings::Bindings;
 use crate::lexer::Lexer;
 use crate::parser::Parser;
@@ -14,7 +14,7 @@ pub enum Output {
 }
 
 impl Output {
-    fn codegen(&self, compiler: &Compiler) -> std::io::Result<()> {
+    fn codegen(&self, compiler: &Compiler<TypedNode>) -> std::io::Result<()> {
         match &self {
             Output::Stdout => {
                 let out = &mut std::io::stdout();
@@ -43,18 +43,18 @@ impl Output {
     }
 }
 
-pub struct Compiler {
-    pool: StringPool,
+pub struct Compiler<'a, Node> {
+    pool: &'a StringPool,
     bindings: Bindings,
     trees: Vec<Node>,
 
     output: Output
 }
 
-impl Compiler {
-    pub fn new(output: Output) -> Self {
+impl<'a> Compiler<'a, UntypedNode> {
+    pub fn new(pool: &'a StringPool, output: Output) -> Self {
         Compiler {
-            pool: StringPool::new(),
+            pool,
             bindings: Bindings::new(),
             trees: vec![],
 
@@ -77,14 +77,26 @@ impl Compiler {
         Ok(())
     }
 
-    pub fn typecheck(&mut self) -> Result<(), String> {
-        for tree in self.trees.iter_mut(){
-            typecheck(&mut self.bindings, tree)?;
-        }
+    pub fn typecheck(mut self) -> Result<Compiler<'a, TypedNode>, String> {
+        let trees: Result<_, String> = self.trees.into_iter().map(|tree| {
+            let tree = typecheck(&mut self.bindings, tree)?;
+            Ok(tree.0)
+        }).collect();
 
-        Ok(())
+        let trees = trees?;
+
+        Ok(Compiler::<TypedNode> {
+            pool: self.pool,
+            bindings: self.bindings,
+            output: self.output,
+            trees
+        })
     }
 
+
+}
+
+impl<'a> Compiler<'a, TypedNode> {
     pub fn output(&self) -> std::io::Result<()> {
         self.output.codegen(&self)
     }
@@ -96,7 +108,7 @@ impl Compiler {
         codegen::write_forward_declarations(&self.bindings, writer)?;
 
         for tree in self.trees.iter() {
-            codegen::codegen(&self.bindings, tree, writer)?;
+             codegen::codegen(&self.bindings, tree, writer)?;
         }
 
         Ok(())

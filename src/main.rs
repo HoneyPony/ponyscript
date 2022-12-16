@@ -9,6 +9,7 @@ use std::collections::VecDeque;
 use std::env::args;
 use std::path::{PathBuf};
 use crate::compiler::{Compiler, Output};
+use crate::string_pool::StringPool;
 
 struct Config {
     output: Output,
@@ -16,7 +17,8 @@ struct Config {
 }
 
 fn compile(config: Config) {
-    let mut compiler = Compiler::new(config.output);
+    let pool = StringPool::new();
+    let mut compiler = Compiler::new(&pool,config.output);
 
     let parse_errors: Vec<String> = config.source_paths.iter().map(|path| {
         compiler.parse_source_file(path)
@@ -29,12 +31,17 @@ fn compile(config: Config) {
         return;
     }
 
-    if let Err(type_err) = compiler.typecheck() {
-        println!("Typecheck error: {}", type_err);
-        return;
-    }
+    let compiler = compiler.typecheck();
 
-    compiler.output().expect("Failed to output code!");
+    match compiler {
+        Err(type_err) => {
+            println!("Typecheck error: {}", type_err);
+            return;
+        }
+        Ok(compiler) => {
+            compiler.output().expect("Failed to output code!");
+        }
+    }
 }
 
 fn main() {

@@ -1,6 +1,6 @@
 use std::io::{Read};
 use crate::ast;
-use crate::ast::{FunDecl, Node, Type};
+use crate::ast::{Node, Type};
 use crate::ast::Node::{Empty};
 use crate::bindings::{Bindings, FunID, Namespace, VarID};
 
@@ -128,7 +128,7 @@ impl<'a, R: Read> Parser<'a, R> {
         let lhs = match self.current {
             Token::Num(str) => {
                 self.advance();
-                Ok(ast::NumConst::new(str, ast::Type::UnspecificNumeric).to_node())
+                Ok(Node::NumConst(str, ast::Type::UnspecificNumeric))
             },
             Token::ID(_) => {
                 self.parse_expr_id()
@@ -162,11 +162,11 @@ impl<'a, R: Read> Parser<'a, R> {
             let expr = self.parse_expr()?;
             let expr = Some(Box::new(expr));
             let bind_id = self.new_var_binding(id, typ);
-            return Ok(ast::Declaration::new_expr(bind_id, expr).to_node());
+            return Ok(Node::Decl(bind_id, expr));
         }
         else {
             let bind_id = self.new_var_binding(id, typ);
-            return Ok(ast::Declaration::new(bind_id).to_node());
+            return Ok(Node::Decl(bind_id, None));
         }
     }
 
@@ -271,14 +271,14 @@ impl<'a, R: Read> Parser<'a, R> {
         self.eat_or_err(Token::BlockStart,"Expected block after function")?;
 
         let func_id = self.bindings.new_fun_binding(self.namespace, id, return_type, args)?;
-        let mut func = FunDecl::new(func_id);
+        let mut body = vec![];
 
         while !self.eat(Token::BlockEnd) {
             let statement = self.parse_statement();
-            func.body.push(statement?);
+            body.push(statement?);
         }
 
-        return func.to_rnode();
+        return Ok(Node::FunDecl(func_id, body));
     }
 
     fn parse_fun(&mut self) -> ast::RNode {

@@ -29,45 +29,43 @@ fn codegen_fun_decl<W: Write>(bindings: &Bindings, fun: &FunBinding, writer: &mu
     Ok(())
 }
 
-pub fn codegen<W: Write>(bindings: &Bindings, node: &Node, writer: &mut W) -> io::Result<()> {
+pub fn codegen<W: Write>(bindings: &Bindings, node: &TypedNode, writer: &mut W) -> io::Result<()> {
     match node {
-        Node::FunDecl(f) => {
-            let fun = bindings.get_fun(f.bind_id);
+        Node::FunDecl(bind_id, body) => {
+            let fun = bindings.get_fun(*bind_id);
             codegen_fun_decl(bindings, fun, writer)?;
 
             writer.write(b" {\n")?;
 
-            for s in &f.body {
-                codegen(bindings,s, writer)?;
+            for statement in body {
+                codegen(bindings,statement, writer)?;
             }
             writer.write(b"}\n")?;
         }
-        Node::FunCall(_, point, args) => {
-            if let BindPoint::BoundTo(fun) = point {
-                let fun = bindings.get_fun(*fun);
+        Node::FunCall(_, fun, args) => {
+            let fun = bindings.get_fun(*fun);
 
-                writer.write_fmt(format_args!("{}(", fun.output_name))?;
-                let mut generate_comma = false;
-                for arg in args {
-                    if generate_comma { writer.write(b", ")?; }
+            writer.write_fmt(format_args!("{}(", fun.output_name))?;
+            let mut generate_comma = false;
+            for arg in args {
+                if generate_comma { writer.write(b", ")?; }
 
-                    codegen(bindings, arg, writer)?;
+                codegen(bindings, arg, writer)?;
 
-                    generate_comma = true;
-                }
-                writer.write(b");\n")?;
+                generate_comma = true;
             }
+            writer.write(b");\n")?;
         }
         Node::Tree(tree) => {
             for child in &tree.children {
                 codegen::<W>(bindings,child, writer)?;
             }
         }
-        Node::Decl(dec) => {
-            let binding = bindings.get_var(dec.bind_id);
+        Node::Decl(bind_id, expr) => {
+            let binding = bindings.get_var(*bind_id);
             writer.write_fmt(format_args!("{} {}", binding.typ, binding.output_name))?;
 
-            if let Some(expr) = &dec.expr {
+            if let Some(expr) = expr {
                 writer.write(b" = ")?;
                 codegen(bindings, expr, writer)?;
             }
@@ -75,26 +73,20 @@ pub fn codegen<W: Write>(bindings: &Bindings, node: &Node, writer: &mut W) -> io
             writer.write(b";\n")?;
         }
         Node::Assign(bind, expr) => {
-            if let BindPoint::BoundTo(bind_id) = bind {
-                let binding = bindings.get_var(*bind_id);
-                writer.write_fmt(format_args!("{} = ", binding.output_name))?;
-                codegen(bindings, expr.as_ref(), writer)?;
-                writer.write(b";\n")?;
-            }
-            // TODO: Return an error, maybe...?
+            let binding = bindings.get_var(*bind);
+            writer.write_fmt(format_args!("{} = ", binding.output_name))?;
+            codegen(bindings, expr.as_ref(), writer)?;
+            writer.write(b";\n")?;
         }
-        Node::NumConst(str) => {
-            writer.write_fmt(format_args!("{}", str.value_str))?;
+        Node::NumConst(val, _) => {
+            writer.write_fmt(format_args!("{}", val))?;
         }
         Node::BinOp(op, lhs, rhs) => {
             codegen_op(bindings, op, lhs, rhs, writer)?;
         }
-        Node::VarRef(point) => {
-            if let BindPoint::BoundTo(bind_id) = point {
-                let binding = bindings.get_var(*bind_id);
-                writer.write_fmt(format_args!("{}", binding.output_name))?;
-            }
-            // TODO: Return an error, maybe...?
+        Node::VarRef(id) => {
+            let binding = bindings.get_var(*id);
+            writer.write_fmt(format_args!("{}", binding.output_name))?;
         }
         _ => {
 
@@ -103,7 +95,7 @@ pub fn codegen<W: Write>(bindings: &Bindings, node: &Node, writer: &mut W) -> io
     Ok(())
 }
 
-fn codegen_op<W: Write>(bindings: &Bindings, op: &Op, lhs: &Box<Node>, rhs: &Box<Node>, writer: &mut W) -> io::Result<()> {
+fn codegen_op<W: Write>(bindings: &Bindings, op: &Op, lhs: &Box<TypedNode>, rhs: &Box<TypedNode>, writer: &mut W) -> io::Result<()> {
     // Write the operator function name. This could even allow user-defined operators...
     writer.write_fmt(format_args!("{}_op_{}(", lhs.get_expr_type(bindings), op.impl_str()))?;
 
