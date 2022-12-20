@@ -2,7 +2,7 @@ use std::fs::File;
 use std::io::{BufReader, Write};
 use std::path::{PathBuf};
 use std::process::{Command, Stdio};
-use crate::ast::{codegen, Node, Type, typecheck, TypedNode, UntypedNode};
+use crate::ast::{codegen, Node, TypeName, typecheck, TypedNode, UntypedNode};
 use crate::bindings::Bindings;
 use crate::lexer::Lexer;
 use crate::parser::Parser;

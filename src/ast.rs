@@ -7,17 +7,17 @@ mod types;
 pub mod codegen;
 mod typecheck;
 pub mod op;
-pub use types::Type;
+pub use types::TypeName;
 pub use codegen::codegen;
 pub use typecheck::typecheck;
 use crate::bindings::{Bindings, FunID, GetID, Namespace, TypeID, VarID};
 
-pub enum BindPoint<Id> {
-    Unbound(PoolS),
+pub enum BindPoint<Unres, Id> {
+    Unbound(Unres),
     BoundTo(Id)
 }
 
-impl<Id : Copy> GetID<Id> for BindPoint<Id> {
+impl<Unres, Id : Copy> GetID<Id> for BindPoint<Unres, Id> {
     fn get_id(&self) -> Option<Id> {
         match &self {
             BindPoint::Unbound(_) => None,
@@ -26,7 +26,7 @@ impl<Id : Copy> GetID<Id> for BindPoint<Id> {
     }
 }
 
-impl<Id> Display for BindPoint<Id> {
+impl<Unres, Id> Display for BindPoint<Unres, Id> {
     fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
         match self {
             BindPoint::Unbound(s) => {
@@ -39,9 +39,9 @@ impl<Id> Display for BindPoint<Id> {
     }
 }
 
-impl<Id> BindPoint<Id> {
-    pub fn unresolved(name: PoolS) -> Self {
-        BindPoint::Unbound(name)
+impl<Unres, Id> BindPoint<Unres, Id> {
+    pub fn unresolved(unresolved: Unres) -> Self {
+        BindPoint::Unbound(unresolved)
     }
 
     pub fn bind_to(&mut self, new_binding: Id) {
@@ -76,7 +76,7 @@ impl Op {
 }
 
 pub trait GetExprType {
-    fn get_expr_type(&self, bindings: &Bindings) -> Type;
+    fn get_expr_type(&self, bindings: &Bindings) -> TypeName;
 }
 
 pub enum Node<VarBind : GetID<VarID>, FunBind : GetID<FunID>, TyBind : GetID<TypeID>> {
@@ -85,7 +85,7 @@ pub enum Node<VarBind : GetID<VarID>, FunBind : GetID<FunID>, TyBind : GetID<Typ
     Decl(VarID, Option<Box<Self>>),
     Assign(VarBind, Box<Self>),
     VarRef(VarBind),
-    NumConst(PoolS, Type),
+    NumConst(PoolS, TypeID),
     FunCall(Namespace, FunBind, Vec<Self>),
     BinOp(Op, Box<Self>, Box<Self>),
     TyBindUnused(TyBind),
@@ -93,29 +93,33 @@ pub enum Node<VarBind : GetID<VarID>, FunBind : GetID<FunID>, TyBind : GetID<Typ
 }
 
 impl<V : GetID<VarID>, F : GetID<FunID>, T : GetID<TypeID>> GetExprType for Node<V, F, T> {
-    fn get_expr_type(&self, bindings: &Bindings) -> Type {
+    fn get_expr_type(&self, bindings: &Bindings) -> TypeID {
         match &self {
             Node::NumConst(_, typ) => {
-                typ.clone()
+                *typ
             }
             Node::VarRef(point) => {
-                point.get_id().map_or(Type::Error, |id| bindings.get_var(id).typ.clone())
+                point.get_id().map_or(TypeName::Error, |id| bindings.get_var(id).typ.clone())
             }
             Node::FunCall(_, point, _) => {
-                point.get_id().map_or(Type::Error, |id| bindings.get_fun(id).return_type.clone())
+                point.get_id().map_or(TypeName::Error, |id| bindings.get_fun(id).return_type.clone())
             }
             Node::BinOp(_, lhs, _) => {
                 lhs.get_expr_type(bindings)
             }
-            _ => Type::Error
+            _ => TypeName::Error
         }
     }
 }
 
+pub type VarBindPoint = BindPoint<PoolS, VarID>;
+pub type FunBindPoint = BindPoint<PoolS, FunID>;
+pub type TypeBindPoint = BindPoint<TypeName, TypeID>;
+
 pub type UntypedNode = Node<
-    BindPoint<VarID>,
-    BindPoint<FunID>,
-    BindPoint<TypeID>
+    BindPoint<PoolS, VarID>,
+    BindPoint<PoolS, FunID>,
+    TypeBindPoint
 >;
 
 pub type TypedNode = Node<
