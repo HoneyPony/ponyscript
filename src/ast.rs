@@ -10,7 +10,7 @@ pub mod op;
 pub use types::Type;
 pub use codegen::codegen;
 pub use typecheck::typecheck;
-use crate::bindings::{Bindings, FunID, GetID, Namespace, TypeID, VarID};
+use crate::bindings::{Bindings, FunID, GetID, Namespace, VarID};
 
 pub enum BindPoint<Id> {
     Unbound(PoolS),
@@ -79,7 +79,7 @@ pub trait GetExprType {
     fn get_expr_type(&self, bindings: &Bindings) -> Type;
 }
 
-pub enum Node<VarBind : GetID<VarID>, FunBind : GetID<FunID>, TyBind : GetID<TypeID>> {
+pub enum Node<VarBind : GetID<VarID>, FunBind : GetID<FunID>> {
     Tree(Tree<Self>),
     FunDecl(FunID, Vec<Self>),
     Decl(VarID, Option<Box<Self>>),
@@ -88,11 +88,10 @@ pub enum Node<VarBind : GetID<VarID>, FunBind : GetID<FunID>, TyBind : GetID<Typ
     NumConst(PoolS, Type),
     FunCall(Namespace, FunBind, Vec<Self>),
     BinOp(Op, Box<Self>, Box<Self>),
-    TyBindUnused(TyBind),
     Empty
 }
 
-impl<V : GetID<VarID>, F : GetID<FunID>, T : GetID<TypeID>> GetExprType for Node<V, F, T> {
+impl<V : GetID<VarID>, F : GetID<FunID>> GetExprType for Node<V, F> {
     fn get_expr_type(&self, bindings: &Bindings) -> Type {
         match &self {
             Node::NumConst(_, typ) => {
@@ -115,13 +114,11 @@ impl<V : GetID<VarID>, F : GetID<FunID>, T : GetID<TypeID>> GetExprType for Node
 pub type UntypedNode = Node<
     BindPoint<VarID>,
     BindPoint<FunID>,
-    BindPoint<TypeID>
 >;
 
 pub type TypedNode = Node<
     VarID,
     FunID,
-    TypeID
 >;
 
 pub type RNode = Result<UntypedNode, String>;

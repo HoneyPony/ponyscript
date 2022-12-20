@@ -19,11 +19,6 @@ pub struct VarID(u64);
 #[derive(Eq, Hash, PartialEq)]
 pub struct FunID(u64);
 
-#[derive(Debug)]
-#[derive(Copy, Clone)]
-#[derive(Eq, Hash, PartialEq)]
-pub struct TypeID(u64);
-
 impl GetID<Self> for VarID {
     fn get_id(&self) -> Option<Self> {
         Some(*self)
@@ -31,12 +26,6 @@ impl GetID<Self> for VarID {
 }
 
 impl GetID<Self> for FunID {
-    fn get_id(&self) -> Option<Self> {
-        Some(*self)
-    }
-}
-
-impl GetID<Self> for TypeID {
     fn get_id(&self) -> Option<Self> {
         Some(*self)
     }
@@ -76,7 +65,7 @@ pub struct FunBinding {
     pub output_name: String,
     pub return_type: Type,
     pub args: Vec<VarID>,
-    pub called_on: Option<TypeID>
+    pub called_on: Option<Type>
 }
 
 impl FunBinding {
@@ -85,18 +74,11 @@ impl FunBinding {
     }
 }
 
-pub struct TypeBinding {
-    pub associated_type: Type,
-    pub output_name: String
-}
-
 pub struct Bindings {
     next: u64,
     var_map: HashMap<VarID, VarBinding>,
     fun_map: HashMap<FunID, FunBinding>,
     reverse_fun_map: HashMap<(Namespace, PoolS), Vec<(FunID, Vec<VarID>)>>,
-    type_map: HashMap<TypeID, TypeBinding>,
-    type_id_map: HashMap<Type, TypeID>,
     names: HashMap<PoolS, u64>
 }
 
@@ -107,8 +89,6 @@ impl Bindings {
             var_map: HashMap::new(),
             fun_map: HashMap::new(),
             reverse_fun_map: HashMap::new(),
-            type_map: HashMap::new(),
-            type_id_map: HashMap::new(),
             names: HashMap::new()
         }
     }
@@ -135,30 +115,6 @@ impl Bindings {
 
     pub fn get_var_mut(&mut self, id: VarID) -> &mut VarBinding {
         self.var_map.get_mut(&id).unwrap() // TODO: Determine if this unwrap is safe
-    }
-
-    fn initialize_type(&mut self, id: TypeID, associated: Type) {
-        let output_name = format!("{}", associated);
-
-        let binding = TypeBinding {
-            associated_type: associated,
-            output_name
-        };
-
-        self.type_map.insert(id, binding);
-    }
-
-    pub fn find_type_id(&mut self, typ: &Type) -> TypeID {
-        let existing = self.type_id_map.get(&typ);
-        if let Some(id) = existing {
-            return *id;
-        }
-
-        let new = TypeID(self.grab_id());
-        self.type_id_map.insert(typ.clone(), new);
-        self.initialize_type(new, typ.clone());
-
-        new
     }
 
     pub fn new_fun_binding(&mut self, namespace: Namespace, name: PoolS, return_type: Type, args: Vec<VarID>) -> Result<FunID, String> {

@@ -200,7 +200,6 @@ pub fn typecheck<'a>(bindings: &mut Bindings, node: UntypedNode) -> Result<(Type
                 }
             }
         }
-        Node::TyBindUnused(id) => { return Ok((Node::TyBindUnused(id.get_id().unwrap()), Type::Error))}
         Node::Empty => { return Ok((Node::Empty, Type::Error)) }
     }
 }
