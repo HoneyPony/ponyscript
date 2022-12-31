@@ -53,7 +53,10 @@ fn propagate_numeric(node: &mut TypedNode, typ: &Type) {
             propagate_numeric(rhs, typ);
             propagate_numeric(lhs, typ);
         }
-        Node::FunCall(_, _, args) => {
+        Node::FunCall(_, called_on, _, args) => {
+            if let Some(called_on) = called_on {
+                propagate_numeric(called_on, typ);
+            }
             for arg in args {
                 propagate_numeric(arg, typ);
             }
@@ -171,7 +174,7 @@ pub fn typecheck<'a>(bindings: &mut Bindings, node: UntypedNode) -> Result<(Type
             }
             return Err(String::from("Could not match types in binary expression"));
         }
-        Node::FunCall(namespace, point, args) => {
+        Node::FunCall(namespace, called_on, point, args) => {
             let args: Result<_, String> = args.into_iter().map(|arg| {
                 let arg = typecheck(bindings, arg)?;
                 Ok(arg.0)
@@ -179,27 +182,61 @@ pub fn typecheck<'a>(bindings: &mut Bindings, node: UntypedNode) -> Result<(Type
 
             let args = args?;
 
-            match point {
-                BindPoint::Unbound(name) => {
-                    let binding = bindings
-                        .find_fun_from_compat_nodes(namespace,name, &args)
-                        .ok_or(format!("In call to {}, could not find matching arg list", name))?;
-
-                    let typ = bindings.get_fun(binding).return_type.clone();
-                    return Ok((
-                        Node::FunCall(namespace, binding, args),
-                        typ
-                    ));
+            // Typecheck the called on arg as well
+            let called_on = match called_on {
+                Some(inner) => {
+                    let inner = typecheck(bindings, *inner)?.0;
+                    Some(Box::new(inner))
                 }
-                BindPoint::BoundTo(id) => {
-                    let typ = bindings.get_fun(id).return_type.clone();
-                    return Ok((
-                        Node::FunCall(namespace, id, args),
-                        typ
-                    ));
+                None => None
+            };
+
+            // If there is a called on: Then, we need to match based on that.
+            match called_on {
+                Some(called_on) => {
+                    /* TODO */
+                    return Err(String::from("Not implemented yet, sorry!"));
+                }
+                None => {
+                    // If there is no called_on, then we need to find using the "self"
+                    // parameter (if it is a dynamic call...) and otherwise use global
+                    // functions.
+
+                    match point {
+                        BindPoint::Unbound(name) => {
+                            let binding = bindings
+                                .find_fun_from_nodes_in_self_namespace(namespace, name, &args)
+                                .ok_or(format!("In call to {}, could not find matching arg list", name))?;
+
+                            // If binding.1, then we need to change called_on to be a SelfRef node.
+                            let called_on = if binding.1 {
+                                Some(Box::new(TypedNode::SelfRef))
+                            }
+                            else {
+                                None
+                            };
+
+                            let typ = bindings.get_fun(binding.0).return_type.clone();
+                            return Ok((
+                                Node::FunCall(namespace, called_on, binding.0, args),
+                                typ
+                            ));
+                        }
+                        BindPoint::BoundTo(id) => {
+                            let typ = bindings.get_fun(id).return_type.clone();
+                            return Ok((
+                                Node::FunCall(namespace, called_on,id, args),
+                                typ
+                            ));
+                        }
+                    }
                 }
             }
         }
+        // TODO: SelfRef needs to know the type of the current self. This needs to be done
+        // I guess, using a per-file basis...?
+        Node::SelfRef => { return Ok((Node::SelfRef, Type::Error)) }
         Node::Empty => { return Ok((Node::Empty, Type::Error)) }
+
     }
 }

@@ -14,6 +14,15 @@ fn codegen_fun_decl<W: Write>(bindings: &Bindings, fun: &FunBinding, writer: &mu
     writer.write_fmt(format_args!("{} {}(", fun.return_type, fun.output_name))?;
 
     let mut generate_comma = false;
+
+    match fun.namespace {
+        Namespace::DynamicCall(typ) => {
+            writer.write(b"void *self_ptr")?;
+            generate_comma = true;
+        }
+        _ => { }
+    }
+
     for param in &fun.args {
         if generate_comma {
             writer.write(b", ")?;
@@ -37,16 +46,31 @@ pub fn codegen<W: Write>(bindings: &Bindings, node: &TypedNode, writer: &mut W) 
 
             writer.write(b" {\n")?;
 
+            match fun.namespace {
+                Namespace::DynamicCall(node_name) => {
+                    let type_name = Type::Primitive(node_name);
+                    writer.write_fmt(format_args!("{0} *self = ({0}*)(self_ptr);\n", type_name))?;
+                }
+                _ => {}
+            }
+
             for statement in body {
                 codegen(bindings,statement, writer)?;
             }
             writer.write(b"}\n")?;
         }
-        Node::FunCall(_, fun, args) => {
+        Node::FunCall(namespace, called_on, fun, args) => {
             let fun = bindings.get_fun(*fun);
 
             writer.write_fmt(format_args!("{}(", fun.output_name))?;
             let mut generate_comma = false;
+
+            // called_on is the first argument.
+            if let Some(called_on) = called_on {
+                codegen(bindings, called_on, writer)?;
+                generate_comma = true;
+            }
+
             for arg in args {
                 if generate_comma { writer.write(b", ")?; }
 
@@ -87,6 +111,9 @@ pub fn codegen<W: Write>(bindings: &Bindings, node: &TypedNode, writer: &mut W) 
         Node::VarRef(id) => {
             let binding = bindings.get_var(*id);
             writer.write_fmt(format_args!("{}", binding.output_name))?;
+        }
+        Node::SelfRef => {
+            writer.write(b"self")?;
         }
         _ => {
 

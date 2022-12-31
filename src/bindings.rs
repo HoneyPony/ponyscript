@@ -65,12 +65,13 @@ pub struct FunBinding {
     pub output_name: String,
     pub return_type: Type,
     pub args: Vec<VarID>,
-    pub called_on: Option<Type>
+    pub called_on: Option<Type>,
+    pub namespace: Namespace
 }
 
 impl FunBinding {
-    pub fn new(output_name: String, return_type: Type, args: Vec<VarID>) -> Self {
-        FunBinding { output_name, return_type, args, called_on: None }
+    pub fn new(namespace: Namespace, output_name: String, return_type: Type, args: Vec<VarID>) -> Self {
+        FunBinding { output_name, return_type, args, called_on: None, namespace }
     }
 }
 
@@ -138,7 +139,7 @@ impl Bindings {
         let list = self.reverse_fun_map.entry((namespace, name)).or_insert(vec![]);
         list.push((id, args.clone()));
 
-        self.fun_map.insert(id, FunBinding::new(output_name, return_type, args));
+        self.fun_map.insert(id, FunBinding::new(namespace, output_name, return_type, args));
 
         Ok(id)
     }
@@ -174,6 +175,22 @@ impl Bindings {
         }
 
         None
+    }
+
+    pub fn find_fun_from_nodes_in_self_namespace<Node : GetExprType>(&self, namespace: Namespace, name: PoolS, args: &Vec<Node>) -> Option<(FunID, bool)> {
+        // First: if the function exists in our own namespace, return that function
+        let own = self.find_fun_from_compat_nodes(namespace, name, args);
+        if let Some(own) = own {
+            return Some((own, true));
+        }
+
+        // Second: look for the function in super classes. (TODO)
+
+        // Third: look for the function in the global namespace.
+        let global = self.find_fun_from_compat_nodes(Namespace::Global, name, args);
+
+        // This is the last option, return it directly.
+        return global.map(|global| (global, false));
     }
 
     pub fn get_fun(&self, id: FunID) -> &FunBinding {

@@ -86,8 +86,9 @@ pub enum Node<VarBind : GetID<VarID>, FunBind : GetID<FunID>> {
     Assign(VarBind, Box<Self>),
     VarRef(VarBind),
     NumConst(PoolS, Type),
-    FunCall(Namespace, FunBind, Vec<Self>),
+    FunCall(Namespace, Option<Box<Self>>, FunBind, Vec<Self>),
     BinOp(Op, Box<Self>, Box<Self>),
+    SelfRef,
     Empty
 }
 
@@ -100,7 +101,7 @@ impl<V : GetID<VarID>, F : GetID<FunID>> GetExprType for Node<V, F> {
             Node::VarRef(point) => {
                 point.get_id().map_or(Type::Error, |id| bindings.get_var(id).typ.clone())
             }
-            Node::FunCall(_, point, _) => {
+            Node::FunCall(_, _, point, _) => {
                 point.get_id().map_or(Type::Error, |id| bindings.get_fun(id).return_type.clone())
             }
             Node::BinOp(_, lhs, _) => {

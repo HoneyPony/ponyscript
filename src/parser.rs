@@ -190,7 +190,7 @@ impl<'a, R: Read> Parser<'a, R> {
             }
             // We can't actually bind to a specific function call yet, even if we have seen it...
             // In particular, resolving which function to bind to has to be done with type information.
-            return Ok(Node::FunCall(self.namespace,self.unresolved_fun(id), args));
+            return Ok(Node::FunCall(self.namespace, None,self.unresolved_fun(id), args));
         }
         else {
             return Ok(Node::VarRef(self.bind_var(id)));
@@ -214,7 +214,7 @@ impl<'a, R: Read> Parser<'a, R> {
         }
 
         // Function calls are valid statements even if there is no equals
-        if let Node::FunCall(_, _, _) = lhs {
+        if let Node::FunCall(_, _, _, _) = lhs {
             return Ok(lhs);
         }
 
