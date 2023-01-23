@@ -1,14 +1,14 @@
 use std::ops::Deref;
-use crate::ast::{BindPoint, Node, Type, TypedNode, UntypedNode};
+use crate::ast::{BindPoint, Node, TypeName, TypedNode, UntypedNode};
 use crate::ast::Node::Tree;
 use crate::bindings::{Bindings, GetID, VarID};
 
-pub fn type_match_var(var_type: &mut Type, expr_type: &Type) -> bool {
+pub fn type_match_var(var_type: &mut TypeName, expr_type: &TypeName) -> bool {
     match var_type {
-        Type::Unset => {
+        TypeName::Unset => {
             match expr_type {
-                Type::UnspecificNumeric => {
-                    *var_type = Type::Float;
+                TypeName::UnspecificNumeric => {
+                    *var_type = TypeName::Float;
                     true
                 }
                 _ => {
@@ -17,16 +17,16 @@ pub fn type_match_var(var_type: &mut Type, expr_type: &Type) -> bool {
                 }
             }
         }
-        Type::Optional(inner) => {
-            if let Type::Optional(expr_inner) = expr_type {
+        TypeName::Optional(inner) => {
+            if let TypeName::Optional(expr_inner) = expr_type {
                 return type_match_var(inner, expr_inner);
             }
             else {
                 return type_match_var(inner, expr_type);
             }
         }
-        Type::Deref(inner) => {
-            if let Type::Deref(expr_inner) = expr_type {
+        TypeName::Deref(inner) => {
+            if let TypeName::Deref(expr_inner) = expr_type {
                 return type_match_var(inner, expr_inner);
             }
             else {
@@ -34,7 +34,7 @@ pub fn type_match_var(var_type: &mut Type, expr_type: &Type) -> bool {
             }
         }
         _ => {
-            if let Type::UnspecificNumeric = expr_type {
+            if let TypeName::UnspecificNumeric = expr_type {
                 return var_type.is_specific_numeric();
             }
             return var_type == expr_type
@@ -42,10 +42,10 @@ pub fn type_match_var(var_type: &mut Type, expr_type: &Type) -> bool {
     }
 }
 
-fn propagate_numeric(node: &mut TypedNode, typ: &Type) {
+fn propagate_numeric(node: &mut TypedNode, typ: &TypeName) {
     match node {
         Node::NumConst(val, num_typ) => {
-            if num_typ == &Type::UnspecificNumeric {
+            if num_typ == &TypeName::UnspecificNumeric {
                 *num_typ = typ.clone();
             }
         }
@@ -70,7 +70,7 @@ fn typecheck_assignment(bindings: &mut Bindings, expr: UntypedNode, id: VarID) -
     let bound = bindings.get_var_mut(id);
     if type_match_var(&mut bound.typ, &checked_expr.1) {
         // Var is matched to type, try propagating type to RHS
-        if bound.typ.is_specific_numeric() && checked_expr.1 == Type::UnspecificNumeric {
+        if bound.typ.is_specific_numeric() && checked_expr.1 == TypeName::UnspecificNumeric {
             propagate_numeric(&mut checked_expr.0, &bound.typ);
         }
 
@@ -80,7 +80,7 @@ fn typecheck_assignment(bindings: &mut Bindings, expr: UntypedNode, id: VarID) -
     return Err(String::from("Could not match types"));
 }
 
-pub fn typecheck<'a>(bindings: &mut Bindings, node: UntypedNode) -> Result<(TypedNode, Type), String> {
+pub fn typecheck<'a>(bindings: &mut Bindings, node: UntypedNode) -> Result<(TypedNode, TypeName), String> {
     match node {
         Node::Tree(tree) => {
             let mut typed_tree = crate::ast::Tree::<TypedNode> {
@@ -96,7 +96,7 @@ pub fn typecheck<'a>(bindings: &mut Bindings, node: UntypedNode) -> Result<(Type
 
             typed_tree.children = children?;
 
-            return Ok((Node::Tree(typed_tree), Type::Error));
+            return Ok((Node::Tree(typed_tree), TypeName::Error));
         }
         Node::FunDecl(id, body) => {
             let body: Result<Vec<TypedNode>, String> = body.into_iter().map(|node| {
@@ -106,7 +106,7 @@ pub fn typecheck<'a>(bindings: &mut Bindings, node: UntypedNode) -> Result<(Type
 
             let body = body?;
 
-            return Ok((Node::FunDecl(id, body), Type::Error));
+            return Ok((Node::FunDecl(id, body), TypeName::Error));
         }
         Node::Decl(id, expr) => {
             let expr = expr.map(|expr| typecheck_assignment(bindings, *expr, id));
@@ -116,7 +116,7 @@ pub fn typecheck<'a>(bindings: &mut Bindings, node: UntypedNode) -> Result<(Type
                 None => None
             };
             let node : TypedNode = Node::Decl(id, expr);
-            return Ok((node, Type::Error));
+            return Ok((node, TypeName::Error));
         }
         Node::Assign(bind, expr) => {
             //let _expr_type = typecheck(bindings, expr)?;
@@ -129,7 +129,7 @@ pub fn typecheck<'a>(bindings: &mut Bindings, node: UntypedNode) -> Result<(Type
                 BindPoint::BoundTo(id) => {
                     let expr = typecheck_assignment(bindings, *expr, id)?;
                     let node : TypedNode = Node::Assign(id, expr);
-                    return Ok((node, Type::Error));
+                    return Ok((node, TypeName::Error));
                 }
             }
         }
@@ -155,11 +155,11 @@ pub fn typecheck<'a>(bindings: &mut Bindings, node: UntypedNode) -> Result<(Type
             let mut left = typecheck(bindings, *lhs)?;
             let mut right = typecheck(bindings, *rhs)?;
 
-            if left.1 == Type::UnspecificNumeric && right.1.is_specific_numeric() {
+            if left.1 == TypeName::UnspecificNumeric && right.1.is_specific_numeric() {
                 propagate_numeric(&mut left.0, &right.1);
                 left.1 = right.1.clone();
             }
-            else if right.1 == Type::UnspecificNumeric && left.1.is_specific_numeric() {
+            else if right.1 == TypeName::UnspecificNumeric && left.1.is_specific_numeric() {
                 propagate_numeric(&mut right.0, &left.1);
                 right.1 = left.1.clone();
             }
@@ -233,8 +233,8 @@ pub fn typecheck<'a>(bindings: &mut Bindings, node: UntypedNode) -> Result<(Type
         }
         // TODO: SelfRef needs to know the type of the current self. This needs to be done
         // I guess, using a per-file basis...?
-        Node::SelfRef => { return Ok((Node::SelfRef, Type::Error)) }
-        Node::Empty => { return Ok((Node::Empty, Type::Error)) }
+        Node::SelfRef => { return Ok((Node::SelfRef, TypeName::Error)) }
+        Node::Empty => { return Ok((Node::Empty, TypeName::Error)) }
 
     }
 }

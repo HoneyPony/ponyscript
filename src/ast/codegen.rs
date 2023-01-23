@@ -48,7 +48,7 @@ pub fn codegen<W: Write>(bindings: &Bindings, node: &TypedNode, writer: &mut W) 
 
             match fun.namespace {
                 Namespace::DynamicCall(node_name) => {
-                    let type_name = Type::Primitive(node_name);
+                    let type_name = TypeName::Primitive(node_name);
                     writer.write_fmt(format_args!("{0} *self = ({0}*)(self_ptr);\n", type_name))?;
                 }
                 _ => {}

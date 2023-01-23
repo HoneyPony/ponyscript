@@ -1,5 +1,7 @@
 extends Node as Test
 
+let my_test: Test
+
 fun a():
 	let test = 10
 

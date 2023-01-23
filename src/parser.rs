@@ -1,6 +1,6 @@
 use std::io::{Read};
 use crate::ast;
-use crate::ast::{Node, Type};
+use crate::ast::{Node, TypeName};
 use crate::ast::Node::{Empty};
 use crate::bindings::{Bindings, FunID, Namespace, VarID};
 
@@ -11,6 +11,11 @@ use crate::parser::scope::Scopes;
 
 mod scope;
 
+enum ParserContext {
+    Unknown,
+    NewClass(TypeName)
+}
+
 pub struct Parser<'a, R: Read> {
     lexer: Lexer<'a, R>,
 
@@ -20,7 +25,9 @@ pub struct Parser<'a, R: Read> {
 
     scope: Scopes,
 
-    namespace: Namespace
+    namespace: Namespace,
+
+    context: ParserContext
 }
 
 impl<'a> Parser<'a, &[u8]> {
@@ -43,9 +50,24 @@ impl<'a, R: Read> Parser<'a, R> {
         ast::BindPoint::<FunID>::unresolved(name)
     }
 
-    fn new_var_binding(&mut self, string: PoolS, typ: Type) -> VarID {
+    fn handle_top_level_var_binding(&mut self, id: VarID) {
+        match &self.context {
+            ParserContext::Unknown => {
+                eprintln!("ponyscript compiler error: trying to parse top-level variable with unknown context");
+                std::process::exit(-1);
+            }
+            ParserContext::NewClass(name) => {
+                self.bindings.type_push_member(&name, id);
+            }
+        }
+    }
+
+    fn new_var_binding(&mut self, string: PoolS, typ: TypeName) -> VarID {
         let id = self.bindings.new_var_binding(string, typ);
         self.scope.add_var(string, id);
+        if self.scope.is_top_level() {
+            self.handle_top_level_var_binding(id);
+        }
         id
     }
 
@@ -88,11 +110,12 @@ impl<'a, R: Read> Parser<'a, R> {
             current: token::bad(),
             bindings,
             scope: Scopes::new(),
-            namespace: Namespace::Global
+            namespace: Namespace::Global,
+            context: ParserContext::Unknown
         }
     }
 
-    fn parse_id_type(&mut self) -> Result<ast::Type, String> {
+    fn parse_id_type(&mut self) -> Result<ast::TypeName, String> {
         let id = self.eat_id_or_err("Expected type")?;
 
         if self.eat(Token::LBracket) {
@@ -105,21 +128,21 @@ impl<'a, R: Read> Parser<'a, R> {
                 if !self.eat(Token::Comma) {
                     self.eat_or_err(Token::RBracket, "Expected ',' or ']' in arg list")?;
 
-                    return Ok(ast::Type::Parameterized(id, inner));
+                    return Ok(ast::TypeName::Parameterized(id, inner));
                 }
             }
         }
         else {
-            return Ok(ast::Type::Primitive(id).to_specific());
+            return Ok(ast::TypeName::Primitive(id).to_specific());
         }
     }
 
-    fn parse_type(&mut self) -> Result<ast::Type, String> {
+    fn parse_type(&mut self) -> Result<ast::TypeName, String> {
         if self.eat(Token::Plus) {
-            return self.parse_id_type().map(|inner| ast::Type::Deref(Box::new(inner)));
+            return self.parse_id_type().map(|inner| ast::TypeName::Deref(Box::new(inner)));
         }
         if self.eat(Token::QuestionMark) {
-            return self.parse_id_type().map(|inner| ast::Type::Optional(Box::new(inner)));
+            return self.parse_id_type().map(|inner| ast::TypeName::Optional(Box::new(inner)));
         }
         return self.parse_id_type();
     }
@@ -128,7 +151,7 @@ impl<'a, R: Read> Parser<'a, R> {
         let lhs = match self.current {
             Token::Num(str) => {
                 self.advance();
-                Ok(Node::NumConst(str, ast::Type::UnspecificNumeric))
+                Ok(Node::NumConst(str, ast::TypeName::UnspecificNumeric))
             },
             Token::ID(_) => {
                 self.parse_expr_id()
@@ -152,7 +175,7 @@ impl<'a, R: Read> Parser<'a, R> {
 
         let id = self.eat_id_or_err("Expected identifier after let")?;
 
-        let mut typ = ast::Type::Unset;
+        let mut typ = ast::TypeName::Unset;
 
         if self.eat(Token::Colon) {
             typ = self.parse_type()?;
@@ -243,7 +266,7 @@ impl<'a, R: Read> Parser<'a, R> {
         let id = self.eat_id_or_err("Unexpected token after 'fun'")?;
 
         let mut args = vec![];
-        let mut return_type = Type::Void;
+        let mut return_type = TypeName::Void;
 
         self.eat_or_err(Token::LParen,"Expected '(' after function name")?;
 
@@ -292,6 +315,8 @@ impl<'a, R: Read> Parser<'a, R> {
         match self.current {
             Token::EOF => Ok(Empty),
             Token::KeyFun => self.parse_fun(),
+            // Top-level variable declarations should not be codegen'd for now (global variables later, maybe)
+            Token::KeyLet => { self.parse_let()?; Ok(Empty) }
             _ => {
                 self.advance();
                 self.err("Unexpected token at top level. Expected 'fun'")
@@ -313,6 +338,10 @@ impl<'a, R: Read> Parser<'a, R> {
         self.namespace = Namespace::DynamicCall(own);
 
         let mut tree = ast::Tree { base_type: base, own_type: own, children: vec![] };
+
+        self.bindings.get_or_make_type(&TypeName::Primitive(own));
+
+        self.context = ParserContext::NewClass(TypeName::Primitive(own));
 
         while self.current.is_something() {
             tree.children.push(self.parse_top_level()?);

@@ -7,7 +7,7 @@ mod types;
 pub mod codegen;
 mod typecheck;
 pub mod op;
-pub use types::Type;
+pub use types::TypeName;
 pub use codegen::codegen;
 pub use typecheck::typecheck;
 use crate::bindings::{Bindings, FunID, GetID, Namespace, VarID};
@@ -76,7 +76,7 @@ impl Op {
 }
 
 pub trait GetExprType {
-    fn get_expr_type(&self, bindings: &Bindings) -> Type;
+    fn get_expr_type(&self, bindings: &Bindings) -> TypeName;
 }
 
 pub enum Node<VarBind : GetID<VarID>, FunBind : GetID<FunID>> {
@@ -85,7 +85,7 @@ pub enum Node<VarBind : GetID<VarID>, FunBind : GetID<FunID>> {
     Decl(VarID, Option<Box<Self>>),
     Assign(VarBind, Box<Self>),
     VarRef(VarBind),
-    NumConst(PoolS, Type),
+    NumConst(PoolS, TypeName),
     FunCall(Namespace, Option<Box<Self>>, FunBind, Vec<Self>),
     BinOp(Op, Box<Self>, Box<Self>),
     SelfRef,
@@ -93,21 +93,21 @@ pub enum Node<VarBind : GetID<VarID>, FunBind : GetID<FunID>> {
 }
 
 impl<V : GetID<VarID>, F : GetID<FunID>> GetExprType for Node<V, F> {
-    fn get_expr_type(&self, bindings: &Bindings) -> Type {
+    fn get_expr_type(&self, bindings: &Bindings) -> TypeName {
         match &self {
             Node::NumConst(_, typ) => {
                 typ.clone()
             }
             Node::VarRef(point) => {
-                point.get_id().map_or(Type::Error, |id| bindings.get_var(id).typ.clone())
+                point.get_id().map_or(TypeName::Error, |id| bindings.get_var(id).typ.clone())
             }
             Node::FunCall(_, _, point, _) => {
-                point.get_id().map_or(Type::Error, |id| bindings.get_fun(id).return_type.clone())
+                point.get_id().map_or(TypeName::Error, |id| bindings.get_fun(id).return_type.clone())
             }
             Node::BinOp(_, lhs, _) => {
                 lhs.get_expr_type(bindings)
             }
-            _ => Type::Error
+            _ => TypeName::Error
         }
     }
 }

@@ -63,6 +63,10 @@ impl Scopes {
         }
         BindPoint::Unbound(name)
     }
+
+    pub fn is_top_level(&self) -> bool {
+        return self.scopes.is_empty()
+    }
 }
 
 

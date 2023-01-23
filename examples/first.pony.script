@@ -1,4 +1,6 @@
 extends Node as First
 
+let second: Second
+
 # This first file defines a function that calls a different function from
 # the second file!

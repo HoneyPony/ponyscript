@@ -1,4 +1,6 @@
 extends Node as Second
 
+let first: First
+
 fun test(f: First):
 	let blah = 7
