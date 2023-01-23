@@ -98,6 +98,11 @@ pub fn codegen<W: Write>(bindings: &Bindings, node: &TypedNode, writer: &mut W) 
         }
         Node::Assign(bind, expr) => {
             let binding = bindings.get_var(*bind);
+            // The only place a Node::Assign can exist, that references an is_member marked variable,
+            // is a place where that variable is being referenced to self
+            if binding.is_member {
+                writer.write(b"self->")?;
+            }
             writer.write_fmt(format_args!("{} = ", binding.output_name))?;
             codegen(bindings, expr.as_ref(), writer)?;
             writer.write(b";\n")?;

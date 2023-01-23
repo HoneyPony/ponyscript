@@ -1,6 +1,7 @@
 extends Node as Test
 
 let my_test: Test
+let my_val: float = 30
 
 fun a():
 	let test = 10

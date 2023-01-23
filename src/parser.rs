@@ -57,7 +57,11 @@ impl<'a, R: Read> Parser<'a, R> {
                 std::process::exit(-1);
             }
             ParserContext::NewClass(name) => {
+                // IMPORTANT TODO: Run type inference on top-level let statements that don't have
+                // anything else happening...
+                // Maybe they could be added to the tree, and simply not codegen'd...?
                 self.bindings.type_push_member(&name, id);
+                self.bindings.to_member_var(id);
             }
         }
     }

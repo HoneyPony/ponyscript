@@ -52,12 +52,13 @@ impl Display for Namespace {
 
 pub struct VarBinding {
     pub output_name: String,
-    pub typ: TypeName
+    pub typ: TypeName,
+    pub is_member: bool
 }
 
 impl VarBinding {
     pub fn new(output_name: String, typ: TypeName) -> Self {
-        VarBinding { output_name, typ }
+        VarBinding { output_name, typ, is_member: false }
     }
 }
 
@@ -140,6 +141,10 @@ impl Bindings {
 
     pub fn get_var_mut(&mut self, id: VarID) -> &mut VarBinding {
         self.var_map.get_mut(&id).unwrap() // TODO: Determine if this unwrap is safe
+    }
+
+    pub fn to_member_var(&mut self, id: VarID) {
+        self.var_map.get_mut(&id).unwrap().is_member = true
     }
 
     pub fn new_fun_binding(&mut self, namespace: Namespace, name: PoolS, return_type: TypeName, args: Vec<VarID>) -> Result<FunID, String> {
