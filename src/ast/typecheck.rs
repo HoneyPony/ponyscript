@@ -65,7 +65,7 @@ fn propagate_numeric(node: &mut TypedNode, typ: &Type) {
     }
 }
 
-fn typecheck_assignment(bindings: &mut Bindings, expr: UntypedNode, id: VarID) -> Result<(TypedNode, Type), String> {
+fn typecheck_assignment(bindings: &mut Bindings, expr: UntypedNode, id: VarID) -> Result<Box<TypedNode>, String> {
     let mut checked_expr = typecheck(bindings, expr)?;
     let bound = bindings.get_var_mut(id);
     if type_match_var(&mut bound.typ, &checked_expr.1) {
@@ -74,11 +74,8 @@ fn typecheck_assignment(bindings: &mut Bindings, expr: UntypedNode, id: VarID) -
             propagate_numeric(&mut checked_expr.0, &bound.typ);
         }
 
-        // It isn't an expression, return Type::Error + typed node
-        return Ok((
-            Node::Decl(id, Some(Box::new(checked_expr.0))),
-            Type::Error
-        ));
+        // Just return the type, will be wrapped in typecheck()
+        return Ok(Box::new(checked_expr.0));
     }
     return Err(String::from("Could not match types"));
 }
@@ -112,15 +109,14 @@ pub fn typecheck<'a>(bindings: &mut Bindings, node: UntypedNode) -> Result<(Type
             return Ok((Node::FunDecl(id, body), Type::Error));
         }
         Node::Decl(id, expr) => {
-
-            match expr {
-                Some(expr) => {
-                    return typecheck_assignment(bindings, *expr, id);
-                }
-                None => {
-                    return Ok((Node::Decl(id, None), Type::Error))
-                }
-            }
+            let expr = expr.map(|expr| typecheck_assignment(bindings, *expr, id));
+            let expr = match expr {
+                Some(Err(e)) => return Err(e),
+                Some(Ok(expr)) => Some(expr),
+                None => None
+            };
+            let node : TypedNode = Node::Decl(id, expr);
+            return Ok((node, Type::Error));
         }
         Node::Assign(bind, expr) => {
             //let _expr_type = typecheck(bindings, expr)?;
@@ -131,7 +127,9 @@ pub fn typecheck<'a>(bindings: &mut Bindings, node: UntypedNode) -> Result<(Type
                     return Err(String::from("Unbound ID"));
                 }
                 BindPoint::BoundTo(id) => {
-                    return typecheck_assignment(bindings, *expr, id);
+                    let expr = typecheck_assignment(bindings, *expr, id)?;
+                    let node : TypedNode = Node::Assign(id, expr);
+                    return Ok((node, Type::Error));
                 }
             }
         }
